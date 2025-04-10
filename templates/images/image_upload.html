@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Загрузка изображения - Определение контуров печени{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Загрузка изображения</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="alert alert-info">
+                        <p class="mb-0">Загрузите медицинский снимок для анализа. Поддерживаемые форматы: JPG, PNG.</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        {{ form.image.label_tag }}
+                        <div class="mt-2">
+                            {{ form.image }}
+                        </div>
+                        {% if form.image.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.image.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Загрузить</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                <a href="{% url 'image_list' %}" class="text-decoration-none">Вернуться к списку изображений</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
