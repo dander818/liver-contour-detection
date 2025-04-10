@@ -26,9 +26,6 @@ var/
 .git/
 .gitignore
 
-# Render
-render.yaml
-
 # Local files
 .env
 .env.local
