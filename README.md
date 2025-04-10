@@ -41,29 +41,40 @@ docker-compose exec web python manage.py createsuperuser
 - База данных: внутри контейнера `/app/db.sqlite3`
 - Медиа-файлы: `./media`
 
-## Деплой на Render.com
+## Деплой на Railway.app
 
-Для деплоя приложения на Render.com:
+Для деплоя приложения на Railway.app:
 
-1. Зарегистрируйтесь на [Render.com](https://render.com/)
-2. Подключите ваш GitHub-репозиторий
-3. Нажмите "New" и выберите "Blueprint"
-4. Выберите ваш репозиторий
-5. Render автоматически обнаружит `render.yaml` и настроит сервисы
+1. Зарегистрируйтесь на [Railway.app](https://railway.app/)
+2. Установите CLI Railway (опционально):
+   ```
+   npm i -g @railway/cli
+   railway login
+   ```
 
-Также можно выполнить деплой вручную:
-1. Нажмите "New" и выберите "Web Service"
-2. Подключите репозиторий
-3. Выберите опцию "Docker"
-4. Укажите название сервиса, например "liver-contour-detection"
-5. Выберите тариф ("Free" для бесплатного размещения)
-6. Укажите переменные окружения:
+3. Деплой через веб-интерфейс:
+   - Перейдите на [Railway.app](https://railway.app/)
+   - Нажмите "New Project" → "Deploy from GitHub repo"
+   - Выберите ваш репозиторий с проектом
+   - Railway автоматически определит Dockerfile и настроит сервис
+   - Нажмите "Deploy Now"
+
+4. Настройте переменные окружения в разделе "Variables":
    - `DEBUG`: "False"
    - `SECRET_KEY`: <сгенерируйте безопасный ключ>
-   - `ALLOWED_HOSTS`: ".onrender.com"
-7. Нажмите "Create Web Service"
+   - `ALLOWED_HOSTS`: ".railway.app"
 
-После деплоя ваше приложение будет доступно по URL вида `https://your-service-name.onrender.com`
+5. Настройка домена (опционально):
+   - В разделе "Settings" → "Domains" вы можете настроить пользовательский домен
+   - По умолчанию приложение будет доступно по адресу https://your-project-name.railway.app
+
+Railway.app предоставляет:
+- 5$ кредитов ежемесячно на бесплатном тарифе
+- 1 ГБ дискового пространства для хранения ваших медиафайлов
+- Интеграцию с GitHub для автоматического деплоя
+- CI/CD автоматизацию
+
+После деплоя ваше приложение будет доступно по URL, предоставленному Railway.app.
 
 ## Развитие проекта
 
