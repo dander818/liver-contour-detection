@@ -30,10 +30,15 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # Настройка для запуска на Railway.app
-RAILWAY_STATIC_URL = os.environ.get('RAILWAY_STATIC_URL')
+RAILWAY_STATIC_URL = os.environ.get('RAILWAY_STATIC_URL', '')
 if RAILWAY_STATIC_URL:
     ALLOWED_HOSTS.append(RAILWAY_STATIC_URL)
-    ALLOWED_HOSTS.append('.railway.app')
+
+# Railway предоставляет RAILWAY_STATIC_URL
+RAILWAY_APP_NAME = os.environ.get('RAILWAY_APP_NAME', '')
+if RAILWAY_APP_NAME:
+    ALLOWED_HOSTS.append(f"{RAILWAY_APP_NAME}.up.railway.app")
+    ALLOWED_HOSTS.append(".up.railway.app")
 
 
 # Application definition
@@ -145,3 +150,6 @@ LOGIN_URL = 'login'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Добавляем поддержку переменной PORT от Railway
+PORT = int(os.environ.get('PORT', 8000))

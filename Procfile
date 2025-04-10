@@ -1,0 +1,1 @@
+web: gunicorn liver_detection.wsgi:application --log-file - 
