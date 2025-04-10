@@ -29,11 +29,10 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 # Обновленная настройка ALLOWED_HOSTS
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
-# Настройка для запуска на Fly.io
-FLY_APP_NAME = os.environ.get('FLY_APP_NAME', '')
-if FLY_APP_NAME:
-    ALLOWED_HOSTS.append(f"{FLY_APP_NAME}.fly.dev")
-    ALLOWED_HOSTS.append(".fly.dev")
+# Настройка для запуска на PythonAnywhere
+PYTHONANYWHERE_HOST = os.environ.get('PYTHONANYWHERE_USERNAME', '')
+if PYTHONANYWHERE_HOST:
+    ALLOWED_HOSTS.append(f"{PYTHONANYWHERE_HOST}.pythonanywhere.com")
 
 
 # Application definition

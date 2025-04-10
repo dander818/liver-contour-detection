@@ -21,4 +21,4 @@ echo "Static files collected"
 
 # Запуск сервера Gunicorn
 echo "Starting Gunicorn server..."
-exec gunicorn liver_detection.wsgi:application --bind 0.0.0.0:8080 
+exec gunicorn liver_detection.wsgi:application --bind 0.0.0.0:8000 

@@ -41,54 +41,64 @@ docker-compose exec web python manage.py createsuperuser
 - База данных: внутри контейнера `/app/db.sqlite3`
 - Медиа-файлы: `./media`
 
-## Деплой на Fly.io
+## Деплой на PythonAnywhere
 
-Для деплоя приложения на Fly.io:
+Для деплоя приложения на PythonAnywhere:
 
-1. Зарегистрируйтесь на [Fly.io](https://fly.io/) и установите Fly CLI:
-   ```
-   # MacOS
-   brew install flyctl
-   
-   # Windows / Linux (через Powershell)
-   iwr https://fly.io/install.ps1 -useb | iex
-   ```
+1. Зарегистрируйтесь на [PythonAnywhere](https://www.pythonanywhere.com/) (бесплатный аккаунт подойдет)
 
-2. Авторизуйтесь в Fly CLI:
-   ```
-   flyctl auth login
-   ```
+2. Загрузите код на PythonAnywhere:
+   - Через Bash консоль PythonAnywhere:
+     ```bash
+     git clone https://github.com/ваш_пользователь/liver_contour_detection.git
+     ```
+   - Или загрузите zip-архив через раздел Files
 
-3. Запустите деплой из корневой директории проекта:
-   ```
+3. Создайте виртуальное окружение и установите зависимости:
+   ```bash
    cd liver_contour_detection
-   flyctl launch --name liver-contour-detection
-   ```
-   Примечание: при запуске вам будет предложено создать PostgreSQL базу данных - можно отказаться, так как мы используем SQLite.
-
-4. Создайте том для хранения медиа-файлов:
-   ```
-   flyctl volumes create liver_media --size 1
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
    ```
 
-5. Настройте переменные окружения:
-   ```
-   flyctl secrets set SECRET_KEY="ваш_безопасный_ключ"
-   flyctl secrets set FLY_APP_NAME="liver-contour-detection"
+4. Настройте веб-приложение:
+   - Перейдите в раздел "Web" на PythonAnywhere
+   - Нажмите "Add a new web app"
+   - Выберите ручную настройку с Python (Manual configuration -> Python 3.9)
+   - В поле "Source code" укажите путь к вашему проекту: `/home/ваш_пользователь/liver_contour_detection`
+   - В поле "Working directory" укажите тот же путь
+   - В разделе "WSGI configuration file" отредактируйте файл:
+     - Удалите стандартный код
+     - Вставьте содержимое из файла `wsgi_pythonanywhere.py` (замените YOURUSERNAME вашим именем пользователя)
+
+5. Настройте статические файлы:
+   - В разделе "Static files" добавьте:
+     - URL: `/static/` -> Directory: `/home/ваш_пользователь/liver_contour_detection/static`
+     - URL: `/media/` -> Directory: `/home/ваш_пользователь/liver_contour_detection/media`
+
+6. Создайте директории для статических и медиа-файлов:
+   ```bash
+   mkdir -p static media
    ```
 
-6. Деплой приложения:
-   ```
-   flyctl deploy
+7. Примените миграции и создайте суперпользователя:
+   ```bash
+   python manage.py migrate
+   python manage.py collectstatic
+   python manage.py createsuperuser
    ```
 
-Fly.io предоставляет:
-- 3 виртуальные машины с 256MB RAM в бесплатном тарифе
-- 3GB постоянного хранилища
-- Глобальное распределение трафика
-- Custom домены с SSL
+8. Перезапустите веб-приложение, нажав на кнопку "Reload" в разделе Web
 
-После деплоя ваше приложение будет доступно по адресу https://liver-contour-detection.fly.dev
+Ваш сайт будет доступен по адресу: https://ваш_пользователь.pythonanywhere.com
+
+PythonAnywhere предоставляет:
+- Бесплатное размещение одного веб-приложения
+- 512 МБ дискового пространства
+- Доступ к консоли Python
+- Поддержку Django и других фреймворков
+- Удобный файловый менеджер
 
 ## Развитие проекта
 

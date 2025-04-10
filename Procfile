@@ -1,1 +1,1 @@
-web: gunicorn liver_detection.wsgi:application --bind 0.0.0.0:8080 
+web: gunicorn liver_detection.wsgi:application --bind 0.0.0.0:8000 

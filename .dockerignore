@@ -13,9 +13,6 @@ db.sqlite3
 railway.json
 Procfile
 
-# Fly.io specific
-fly.toml
-
 # Local files
 .env.local
 .env.development.local
