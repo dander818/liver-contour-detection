@@ -26,7 +26,13 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-yqe9%yi9wfbc4!3167m)7
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']  # Для Docker разрешаем все хосты
+# Обновленная настройка ALLOWED_HOSTS
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+
+# Настройка для запуска на Render.com
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 # Application definition

@@ -1,0 +1,31 @@
+services:
+  # Сервис веб-приложения
+  - type: web
+    name: liver-contour-detection
+    runtime: docker
+    plan: free
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+
+    # Настройка дисков для постоянного хранения данных
+    disk:
+      name: data
+      mountPath: /app/media
+      sizeGB: 1
+
+    # Настройка здоровья приложения
+    healthCheckPath: /admin/login/
+    
+    # Автоматический деплой из GitHub
+    autoDeploy: true
+    
+    # Маршрутизация HTTP-запросов
+    routes:
+      - type: rewrite
+        source: /*
+        destination: / 
