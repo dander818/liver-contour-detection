@@ -41,40 +41,54 @@ docker-compose exec web python manage.py createsuperuser
 - База данных: внутри контейнера `/app/db.sqlite3`
 - Медиа-файлы: `./media`
 
-## Деплой на Railway.app
+## Деплой на Fly.io
 
-Для деплоя приложения на Railway.app:
+Для деплоя приложения на Fly.io:
 
-1. Зарегистрируйтесь на [Railway.app](https://railway.app/)
-2. Установите CLI Railway (опционально):
+1. Зарегистрируйтесь на [Fly.io](https://fly.io/) и установите Fly CLI:
    ```
-   npm i -g @railway/cli
-   railway login
+   # MacOS
+   brew install flyctl
+   
+   # Windows / Linux (через Powershell)
+   iwr https://fly.io/install.ps1 -useb | iex
    ```
 
-3. Деплой через веб-интерфейс:
-   - Перейдите на [Railway.app](https://railway.app/)
-   - Нажмите "New Project" → "Deploy from GitHub repo"
-   - Выберите ваш репозиторий с проектом
-   - Railway автоматически определит Dockerfile и настроит сервис
-   - Нажмите "Deploy Now"
+2. Авторизуйтесь в Fly CLI:
+   ```
+   flyctl auth login
+   ```
 
-4. Настройте переменные окружения в разделе "Variables":
-   - `DEBUG`: "False"
-   - `SECRET_KEY`: <сгенерируйте безопасный ключ>
-   - `ALLOWED_HOSTS`: ".railway.app"
+3. Запустите деплой из корневой директории проекта:
+   ```
+   cd liver_contour_detection
+   flyctl launch --name liver-contour-detection
+   ```
+   Примечание: при запуске вам будет предложено создать PostgreSQL базу данных - можно отказаться, так как мы используем SQLite.
 
-5. Настройка домена (опционально):
-   - В разделе "Settings" → "Domains" вы можете настроить пользовательский домен
-   - По умолчанию приложение будет доступно по адресу https://your-project-name.railway.app
+4. Создайте том для хранения медиа-файлов:
+   ```
+   flyctl volumes create liver_media --size 1
+   ```
 
-Railway.app предоставляет:
-- 5$ кредитов ежемесячно на бесплатном тарифе
-- 1 ГБ дискового пространства для хранения ваших медиафайлов
-- Интеграцию с GitHub для автоматического деплоя
-- CI/CD автоматизацию
+5. Настройте переменные окружения:
+   ```
+   flyctl secrets set SECRET_KEY="ваш_безопасный_ключ"
+   flyctl secrets set FLY_APP_NAME="liver-contour-detection"
+   ```
 
-После деплоя ваше приложение будет доступно по URL, предоставленному Railway.app.
+6. Деплой приложения:
+   ```
+   flyctl deploy
+   ```
+
+Fly.io предоставляет:
+- 3 виртуальные машины с 256MB RAM в бесплатном тарифе
+- 3GB постоянного хранилища
+- Глобальное распределение трафика
+- Custom домены с SSL
+
+После деплоя ваше приложение будет доступно по адресу https://liver-contour-detection.fly.dev
 
 ## Развитие проекта
 
