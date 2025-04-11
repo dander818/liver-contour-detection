@@ -50,13 +50,13 @@ docker-compose exec web python manage.py createsuperuser
 2. Загрузите код на PythonAnywhere:
    - Через Bash консоль PythonAnywhere:
      ```bash
-     git clone https://github.com/ваш_пользователь/liver_contour_detection.git
+     git clone https://github.com/ваш_пользователь/liver-contour-detection.git
      ```
    - Или загрузите zip-архив через раздел Files
 
 3. Создайте виртуальное окружение и установите зависимости:
    ```bash
-   cd liver_contour_detection
+   cd liver-contour-detection
    python3 -m venv venv
    source venv/bin/activate
    pip install -r requirements.txt
@@ -66,7 +66,7 @@ docker-compose exec web python manage.py createsuperuser
    - Перейдите в раздел "Web" на PythonAnywhere
    - Нажмите "Add a new web app"
    - Выберите ручную настройку с Python (Manual configuration -> Python 3.9)
-   - В поле "Source code" укажите путь к вашему проекту: `/home/ваш_пользователь/liver_contour_detection`
+   - В поле "Source code" укажите путь к вашему проекту: `/home/ваш_пользователь/liver-contour-detection`
    - В поле "Working directory" укажите тот же путь
    - В разделе "WSGI configuration file" отредактируйте файл:
      - Удалите стандартный код
@@ -74,8 +74,8 @@ docker-compose exec web python manage.py createsuperuser
 
 5. Настройте статические файлы:
    - В разделе "Static files" добавьте:
-     - URL: `/static/` -> Directory: `/home/ваш_пользователь/liver_contour_detection/static`
-     - URL: `/media/` -> Directory: `/home/ваш_пользователь/liver_contour_detection/media`
+     - URL: `/static/` -> Directory: `/home/ваш_пользователь/liver-contour-detection/static`
+     - URL: `/media/` -> Directory: `/home/ваш_пользователь/liver-contour-detection/media`
 
 6. Создайте директории для статических и медиа-файлов:
    ```bash

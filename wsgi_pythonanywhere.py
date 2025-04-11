@@ -7,7 +7,7 @@ import os
 import sys
 
 # Добавьте путь к вашему проекту Django
-path = '/home/YOURUSERNAME/liver_contour_detection'
+path = '/home/YOURUSERNAME/liver-contour-detection'
 if path not in sys.path:
     sys.path.append(path)
 
