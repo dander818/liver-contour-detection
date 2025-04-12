@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Удаление изображения - Определение контуров печени{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">Подтверждение удаления</h4>
+            </div>
+            <div class="card-body">
+                <h5 class="mb-4">Вы уверены, что хотите удалить изображение "{{ image.original_filename }}"?</h5>
+                
+                <div class="text-center mb-4">
+                    <img src="{{ image.image.url }}" class="img-fluid mb-3" alt="{{ image.original_filename }}" style="max-height: 300px;">
+                </div>
+                
+                <p class="text-danger mb-4">Внимание: Это действие нельзя отменить!</p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'image_detail' image.id %}" class="btn btn-secondary">Отмена</a>
+                        <button type="submit" class="btn btn-danger">Удалить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

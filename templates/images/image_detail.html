@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ image.original_filename }} - Определение контуров печени{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>{{ image.original_filename }}</h2>
+            <div>
+                <a href="{% url 'image_list' %}" class="btn btn-secondary me-2">Назад к списку</a>
+                <a href="{% url 'image_delete' image.id %}" class="btn btn-danger">Удалить</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Изображение</h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="img-container mb-3">
+                    <img src="{{ image.image.url }}" class="img-fluid" alt="{{ image.original_filename }}">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Информация</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-5">Имя файла:</dt>
+                    <dd class="col-sm-7">{{ image.original_filename }}</dd>
+                    
+                    <dt class="col-sm-5">Дата загрузки:</dt>
+                    <dd class="col-sm-7">{{ image.uploaded_at|date:"d.m.Y H:i" }}</dd>
+                    
+                    <dt class="col-sm-5">Статус:</dt>
+                    <dd class="col-sm-7">
+                        {% if image.processed %}
+                            <span class="badge bg-success">Обработано</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Ожидает обработки</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Действия</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid">
+                    <a href="{{ image.image.url }}" class="btn btn-success mb-3" download="{{ image.original_filename }}">Скачать изображение</a>
+                    <a href="#" class="btn btn-primary mb-2 disabled">Обработать изображение</a>
+                    <p class="small text-muted">Функция обработки будет доступна в ближайшем обновлении.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
