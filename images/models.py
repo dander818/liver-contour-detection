@@ -8,7 +8,7 @@ def user_directory_path(instance, filename):
 
 class Image(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to=user_directory_path)
+    image = models.FileField(upload_to=user_directory_path)
     original_filename = models.CharField(max_length=255)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     processed = models.BooleanField(default=False)
