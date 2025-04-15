@@ -41,10 +41,9 @@ def image_upload(request):
         if form.is_valid():
             image = form.save(commit=False)
             image.user = request.user
-            image.original_filename = request.FILES['image'].name
             image.save()
             messages.success(request, 'Изображение успешно загружено!')
-            return redirect('image_list')
+            return redirect('original_image_list')
     else:
         form = ImageUploadForm()
     return render(request, 'images/image_upload.html', {'form': form})
@@ -58,12 +57,22 @@ def image_detail(request, image_id):
 def image_delete(request, image_id):
     image = get_object_or_404(Image, id=image_id, user=request.user)
     if request.method == 'POST':
-        # Удаляем файл с сервера, если он существует
-        if image.image and os.path.isfile(image.image.path):
-            os.remove(image.image.path)
+        # Удаляем оригинальный файл
+        if image.image and hasattr(image.image, 'path') and os.path.isfile(image.image.path):
+            try:
+                os.remove(image.image.path)
+            except OSError as e:
+                print(f"Error removing original file {image.image.path}: {e}")
+        # Удаляем обработанный файл
+        if image.processed_image and hasattr(image.processed_image, 'path') and os.path.isfile(image.processed_image.path):
+            try:
+                os.remove(image.processed_image.path)
+            except OSError as e:
+                print(f"Error removing processed file {image.processed_image.path}: {e}")
+                
         image.delete()
-        messages.success(request, 'Изображение успешно удалено!')
-        return redirect('image_list')
+        messages.success(request, 'Запись и связанные файлы успешно удалены!')
+        return redirect('original_image_list')
     return render(request, 'images/image_confirm_delete.html', {'image': image})
 
 @login_required
