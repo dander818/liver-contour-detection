@@ -24,3 +24,12 @@ class Image(models.Model):
         if not self.pk and not self.original_filename and self.image:
              self.original_filename = os.path.basename(self.image.name)
         super().save(*args, **kwargs)
+
+    def get_processed_download_filename(self):
+        """Возвращает имя файла для скачивания обработанного изображения."""
+        if not self.processed_image:
+            # Возвращаем оригинальное имя или другое значение по умолчанию
+            return self.original_filename
+        # Извлекаем имя файла из полного пути (после последнего /)
+        filename = os.path.basename(self.processed_image.name)
+        return filename

@@ -26,7 +26,7 @@
                 <div class="img-container mb-3">
                     <img src="{{ image.processed_image.url }}" class="img-fluid" alt="Обработанное: {{ image.original_filename }}">
                 </div>
-                 <a href="{{ image.processed_image.url }}" class="btn btn-sm btn-outline-success" download="{{ image.processed_image.name|cut:'user_'|cut:image.user.id|stringformat:"s"|cut:'/' }}">Скачать (PNG)</a>
+                 <a href="{{ image.processed_image.url }}" class="btn btn-sm btn-outline-success" download="{{ image.get_processed_download_filename }}">Скачать (PNG)</a>
             </div>
         </div>
         {% endif %}
@@ -76,7 +76,7 @@
                     {% endif %}
                     {% if image.processed_image %}
                     <dt class="col-sm-5">Обработано:</dt>
-                    <dd class="col-sm-7"><a href="{{ image.processed_image.url }}" download="{{ image.processed_image.name|cut:'user_'|cut:image.user.id|stringformat:"s"|cut:'/' }}">Скачать (PNG)</a></dd>
+                    <dd class="col-sm-7"><a href="{{ image.processed_image.url }}" download="{{ image.get_processed_download_filename }}">Скачать (PNG)</a></dd>
                     {% endif %}
                 </dl>
             </div>
