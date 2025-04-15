@@ -61,8 +61,16 @@
             <div class="card-body">
                 <div class="d-grid">
                     <a href="{{ image.image.url }}" class="btn btn-success mb-3" download="{{ image.original_filename }}">Скачать изображение</a>
-                    <a href="#" class="btn btn-primary mb-2 disabled">Обработать изображение</a>
-                    <p class="small text-muted">Функция обработки будет доступна в ближайшем обновлении.</p>
+                    
+                    {% if not image.processed %}
+                    <form action="{% url 'process_image' image.id %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary w-100 mb-2">Обработать изображение (DCM в PNG)</button>
+                    </form>
+                    {% else %}
+                    <button type="button" class="btn btn-secondary w-100 mb-2" disabled>Изображение обработано</button>
+                    {% endif %}
+                    <p class="small text-muted">Преобразует DICOM файл в формат PNG.</p>
                 </div>
             </div>
         </div>
