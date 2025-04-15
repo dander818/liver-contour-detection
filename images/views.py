@@ -11,9 +11,28 @@ import os
 # Create your views here.
 
 @login_required
-def image_list(request):
+def original_image_list(request):
+    """Отображает список оригинальных (необработанных) изображений."""
+    # Фильтруем изображения, чтобы показать только те, что НЕ обработаны ИЛИ у которых ЕСТЬ оригинальный файл
+    # (на случай, если обработка не удалась, но файл остался)
     images = Image.objects.filter(user=request.user).order_by('-uploaded_at')
-    return render(request, 'images/image_list.html', {'images': images})
+    context = {
+        'images': images,
+        'title': "Оригинальные изображения",
+        'list_type': 'original'
+    }
+    return render(request, 'images/generic_image_list.html', context)
+
+@login_required
+def processed_image_list(request):
+    """Отображает список обработанных изображений."""
+    images = Image.objects.filter(user=request.user, processed=True, processed_image__isnull=False).order_by('-uploaded_at')
+    context = {
+        'images': images,
+        'title': "Обработанные изображения",
+        'list_type': 'processed'
+    }
+    return render(request, 'images/generic_image_list.html', context)
 
 @login_required
 def image_upload(request):
@@ -52,39 +71,40 @@ def process_image(request, image_id):
     if request.method != 'POST':
         return HttpResponseBadRequest("Only POST requests are allowed")
 
-    image = get_object_or_404(Image, id=image_id, user=request.user)
+    image_instance = get_object_or_404(Image, id=image_id, user=request.user)
     
-    # Проверяем, что файл существует
-    if not image.image or not os.path.exists(image.image.path):
+    if image_instance.processed:
+        messages.warning(request, "Это изображение уже было обработано.")
+        return redirect('image_detail', image_id=image_id)
+        
+    if not image_instance.image or not os.path.exists(image_instance.image.path):
         messages.error(request, "Исходный файл изображения не найден.")
         return redirect('image_detail', image_id=image_id)
         
-    dcm_path = image.image.path
+    original_path = image_instance.image.path
     
-    # Создаем путь для PNG файла в той же директории
-    png_filename = os.path.splitext(os.path.basename(dcm_path))[0] + ".png"
-    png_path = os.path.join(os.path.dirname(dcm_path), png_filename)
+    # Создаем путь для PNG файла в той же директории пользователя
+    # Используем то же имя файла, но с расширением .png
+    base_filename = os.path.splitext(os.path.basename(image_instance.image.name))[0]
+    png_filename = f"{base_filename}_processed.png"
+    # Определяем директорию пользователя относительно MEDIA_ROOT
+    user_dir = os.path.dirname(image_instance.image.name)
+    # Полный путь для сохранения на диске
+    png_save_path = os.path.join(settings.MEDIA_ROOT, user_dir, png_filename)
+    # Путь для сохранения в модели (относительно MEDIA_ROOT)
+    png_model_path = os.path.join(user_dir, png_filename)
+
+    # Создаем директорию, если она не существует
+    os.makedirs(os.path.dirname(png_save_path), exist_ok=True)
     
     # Конвертируем DCM в PNG
-    converted_png_path = dcm_to_png(dcm_path, png_path)
+    converted_png_path = dcm_to_png(original_path, png_save_path)
     
     if converted_png_path:
-        # Обновляем ссылку на файл в модели Image
-        # Вычисляем относительный путь от MEDIA_ROOT
-        relative_png_path = os.path.relpath(converted_png_path, settings.MEDIA_ROOT)
-        image.image.name = relative_png_path # Обновляем поле ImageField
-        image.original_filename = png_filename # Обновляем имя файла
-        image.processed = True # Отмечаем как обработанное
-        image.save()
-        
-        # Удаляем старый DICOM файл (опционально)
-        # if dcm_path != converted_png_path:
-        #     try:
-        #         os.remove(dcm_path)
-        #         print(f"Removed original DICOM file: {dcm_path}")
-        #     except OSError as e:
-        #         print(f"Error removing original DICOM file {dcm_path}: {e}")
-                
+        # Обновляем запись в БД
+        image_instance.processed_image.name = png_model_path # Сохраняем путь к PNG
+        image_instance.processed = True
+        image_instance.save()
         messages.success(request, f"Изображение успешно преобразовано в PNG: {png_filename}")
     else:
         messages.error(request, "Ошибка при преобразовании изображения.")
