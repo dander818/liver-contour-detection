@@ -43,7 +43,7 @@
                         <div class="d-flex justify-content-between">
                             <a href="{% url 'image_detail' image.id %}" class="btn btn-sm btn-outline-primary">Просмотреть</a>
                             {% if list_type == 'processed' and image.processed_image %}
-                                <a href="{{ image.processed_image.url }}" class="btn btn-sm btn-outline-success" download="{{ image.processed_image.name|cut:'user_'|cut:image.user.id|cut:'/' }}">Скачать (PNG)</a>
+                                <a href="{{ image.processed_image.url }}" class="btn btn-sm btn-outline-success" download="{{ image.processed_image.name|cut:'user_'|cut:image.user.id|stringformat:"s"|cut:'/' }}">Скачать (PNG)</a>
                             {% elif image.image %}
                                 <a href="{{ image.image.url }}" class="btn btn-sm btn-outline-success" download="{{ image.original_filename }}">Скачать (Ориг.)</a>
                             {% endif %}
