@@ -1,18 +1,33 @@
-version: '3'
+version: '3.8'
 
 services:
   web:
     build: .
     restart: always
-    ports:
-      - "8000:8000"
     volumes:
-      - ./media:/app/media
-      - ./static:/app/static
+      - media_volume:/app/media
+      - static_volume:/app/staticfiles
     command: >
       bash -c "python manage.py collectstatic --noinput &&
                python manage.py migrate &&
                gunicorn liver_detection.wsgi:application --bind 0.0.0.0:8000"
     environment:
-      - DEBUG=False
-      - SECRET_KEY=${SECRET_KEY:-django-insecure-yqe9%yi9wfbc4!3167m)7iut)ig8^$pxuz5xc%@1bj9^h_%_ay} 
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-yqe9%yi9wfbc4!3167m)7iut)ig8^$pxuz5xc%@1bj9^h_%_ay}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
+
+  nginx:
+    image: nginx:stable-alpine
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - media_volume:/app/media:ro
+      - static_volume:/app/staticfiles:ro
+    depends_on:
+      - web
+
+volumes:
+  media_volume:
+  static_volume: 
