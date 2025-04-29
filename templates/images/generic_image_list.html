@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Определение контуров печени{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>{{ title }}</h2>
+            <a href="{% url 'image_upload' %}" class="btn btn-primary">
+                <i class="fas fa-upload"></i> Загрузить новое
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if images %}
+    <div class="row">
+        {% for image in images %}
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm h-100">
+                    {% if list_type == 'processed' and image.processed_image %}
+                        <img src="{{ image.processed_image.url }}" class="card-img-top image-thumbnail" alt="Обработанное: {{ image.original_filename }}">
+                    {% elif image.image %}
+                        <img src="{{ image.image.url }}" class="card-img-top image-thumbnail" alt="Оригинал: {{ image.original_filename }}">
+                    {% else %}
+                        <div class="card-img-top image-thumbnail d-flex align-items-center justify-content-center bg-light text-muted">
+                            Нет превью
+                        </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ image.original_filename }}</h5>
+                        <p class="card-text small text-muted">
+                            Загружено: {{ image.uploaded_at|date:"d.m.Y H:i" }}
+                        </p>
+                        <p class="card-text">
+                            {% if image.processed %}
+                                <span class="badge bg-success">Обработано</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Ожидает обработки</span>
+                            {% endif %}
+                        </p>
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'image_detail' image.id %}" class="btn btn-sm btn-outline-primary">Просмотреть</a>
+                            {% if list_type == 'processed' and image.processed_image %}
+                                <a href="{{ image.processed_image.url }}" class="btn btn-sm btn-outline-success" download="{{ image.get_processed_download_filename }}">Скачать (PNG)</a>
+                            {% elif image.image %}
+                                <a href="{{ image.image.url }}" class="btn btn-sm btn-outline-success" download="{{ image.original_filename }}">Скачать (Ориг.)</a>
+                            {% endif %}
+                            <a href="{% url 'image_delete' image.id %}" class="btn btn-sm btn-outline-danger">Удалить</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        {% if list_type == 'original' %}
+            <p class="mb-0">У вас пока нет загруженных изображений. <a href="{% url 'image_upload' %}">Загрузите</a> ваше первое изображение.</p>
+        {% elif list_type == 'processed' %}
+            <p class="mb-0">У вас пока нет обработанных изображений.</p>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %} 

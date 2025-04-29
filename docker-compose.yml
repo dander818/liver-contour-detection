@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  web:
+    build: .
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./media:/app/media
+      - ./static:/app/static
+    command: >
+      bash -c "python manage.py collectstatic --noinput &&
+               python manage.py migrate &&
+               gunicorn liver_detection.wsgi:application --bind 0.0.0.0:8000"
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-yqe9%yi9wfbc4!3167m)7iut)ig8^$pxuz5xc%@1bj9^h_%_ay} 

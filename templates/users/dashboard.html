@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Панель управления - Определение контуров печени{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-light p-5 rounded shadow-sm">
+            <h1 class="display-4">Добро пожаловать, {{ user.username }}!</h1>
+            <p class="lead">Система автоматического определения контуров печени на медицинских снимках.</p>
+            <hr class="my-4">
+            <p>Используйте карточки ниже для работы с изображениями.</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">Загрузка изображений</h5>
+                <p class="card-text">Вы можете загрузить медицинские снимки печени для их анализа.</p>
+                <a href="{% url 'image_upload' %}" class="btn btn-outline-primary">Загрузить</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">Просмотр изображений</h5>
+                <p class="card-text">Просмотр оригинальных и обработанных изображений.</p>
+                <a href="{% url 'original_image_list' %}" class="btn btn-outline-primary me-2">Оригиналы</a>
+                <a href="{% url 'processed_image_list' %}" class="btn btn-outline-secondary">Обработанные</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
