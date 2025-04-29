@@ -6,4 +6,4 @@ dj-database-url==2.1.0
 pydicom==2.4.4
 numpy==1.26.4
 tensorflow
-matplotlib 
+matplotlib

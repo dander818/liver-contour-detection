@@ -70,7 +70,14 @@ def image_delete(request, image_id):
                 os.remove(image.processed_image.path)
             except OSError as e:
                 print(f"Error removing processed file {image.processed_image.path}: {e}")
-                
+        
+        # Удаляем маску, если она есть
+        if image.prediction_mask and hasattr(image.prediction_mask, 'path') and os.path.isfile(image.prediction_mask.path):
+             try:
+                 os.remove(image.prediction_mask.path)
+             except OSError as e:
+                 print(f"Error removing prediction mask file {image.prediction_mask.path}: {e}")
+
         image.delete()
         messages.success(request, 'Запись и связанные файлы успешно удалены!')
         return redirect('original_image_list')
