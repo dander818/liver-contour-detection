@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use('Agg') # Set non-interactive backend BEFORE importing pyplot or anything that uses it
+
 import numpy as np
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import load_model
@@ -58,7 +61,7 @@ def get_prediction_mask(png_image_path, model):
         # Original notebook had transpose: (0, 3, 1, 2) - check if model expects channels_first or channels_last
         # Keras default is channels_last (batch, height, width, channels) -> (1, 512, 512, 1)
         # If your model expects channels_first (batch, channels, height, width) -> (1, 1, 512, 512), uncomment transpose
-        # img_array = np.transpose(img_array, (0, 3, 1, 2)) # Uncomment if model expects channels_first
+        img_array = np.transpose(img_array, (0, 3, 1, 2)) # Uncommented: Model expects channels_first
 
         img_array = img_array / 255.0  # Normalize
 
@@ -82,35 +85,39 @@ def get_prediction_mask(png_image_path, model):
 
 # --- Saving Mask ---
 
-def save_prediction_mask_image(original_png_path, prediction_mask, output_path):
-    """Saves the prediction mask overlaid on the original image or just the mask."""
+def save_prediction_mask_image(processed_png_path, prediction_mask, output_path):
+    """Generates and saves an image with the prediction mask overlaid onto the processed PNG."""
     if prediction_mask is None:
-        print("Error: Prediction mask is None, cannot save.")
+        print("Error: Prediction mask is None, cannot save overlay.")
         return False
-    if not os.path.exists(original_png_path):
-        print(f"Error: Original PNG {original_png_path} not found for saving mask visualization.")
+    if not os.path.exists(processed_png_path):
+        print(f"Error: Processed PNG {processed_png_path} not found for saving overlay visualization.")
         return False
 
     try:
-        # Option 1: Save only the mask (as grayscale)
-        # Ensure the mask is in 0-255 range for saving as image
-        mask_to_save = (prediction_mask * 255).astype(np.uint8)
-        mask_img = image.array_to_img(mask_to_save[..., np.newaxis] if mask_to_save.ndim == 2 else mask_to_save) # Handle grayscale
-        mask_img.save(output_path)
+        # Use Matplotlib to create the overlay image
+        base_img = image.load_img(processed_png_path, color_mode='grayscale') # Ensure base is loaded as grayscale
+        
+        # Ensure mask is in the range [0, 1] for colormap
+        mask_normalized = np.clip(prediction_mask, 0, 1)
 
+        fig, ax = plt.subplots(figsize=(base_img.width / 100, base_img.height / 100), dpi=100)
+        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        
+        ax.imshow(base_img, cmap='gray') # Draw base image explicitly in grayscale
+        # Overlay the mask with Reds colormap and alpha blending
+        # Set vmin/vmax to ensure consistent mapping for boolean-like masks
+        ax.imshow(mask_normalized, cmap='Reds', alpha=0.4, vmin=0, vmax=1)
+        ax.axis('off')
+        
+        # Save the figure directly
+        plt.savefig(output_path, bbox_inches='tight', pad_inches=0, dpi=100)
+        plt.close(fig) # Close the figure to free memory
 
-        # Option 2: Save overlay (like in the notebook) - requires matplotlib
-        # orig_img = image.load_img(original_png_path, target_size=(512, 512))
-        # fig, ax = plt.subplots(figsize=(8, 8)) # Use object-oriented API
-        # ax.imshow(orig_img)
-        # ax.imshow(prediction_mask, cmap='jet', alpha=0.5)
-        # ax.axis('off')
-        # # Save the figure without extra whitespace
-        # plt.savefig(output_path, bbox_inches='tight', pad_inches=0)
-        # plt.close(fig) # Close the figure to free memory
-
-        print(f"Prediction mask saved to {output_path}")
+        print(f"Overlay image saved to {output_path}")
         return True
     except Exception as e:
-        print(f"Error saving prediction mask to {output_path}: {e}")
+        print(f"Error saving overlay image to {output_path}: {e}")
+        import traceback
+        traceback.print_exc() # Print detailed traceback
         return False 

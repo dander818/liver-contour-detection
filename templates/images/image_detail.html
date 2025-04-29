@@ -9,58 +9,55 @@
             <h2>{{ image.original_filename }}{% if image.processed %} (Обработано){% endif %}</h2>
             <div>
                 <a href="{% url 'original_image_list' %}" class="btn btn-secondary me-2">Назад к оригиналам</a>
-                {# Ссылка на удаление теперь в блоке "Действия" #}
             </div>
         </div>
-        {% include 'partials/messages.html' %} {# Добавим отображение сообщений #}
     </div>
 </div>
 
 <div class="row">
     <div class="col-md-7">
-        {# Блок для обработанного PNG #}
-        {% if image.processed_image %}
+        {% if image.prediction_mask %}
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">Обработанное изображение (PNG)</h5>
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Результат обработки (Наложение маски)</h5>
             </div>
             <div class="card-body text-center">
                 <div class="img-container mb-3">
-                    <img src="{{ image.processed_image.url }}" class="img-fluid" alt="Обработанное: {{ image.original_filename }}">
+                    <img src="{{ image.prediction_mask.url }}" class="img-fluid" alt="Результат обработки: {{ image.original_filename }}">
                 </div>
-                 <a href="{{ image.processed_image.url }}" class="btn btn-sm btn-outline-success" download="{{ image.get_processed_download_filename }}">Скачать (PNG)</a>
+                 <a href="{{ image.prediction_mask.url }}" class="btn btn-sm btn-outline-primary" download="{{ image.get_mask_download_filename }}">Скачать (с маской)</a>
+                 {% if image.processed_image %}
+                 <a href="{{ image.processed_image.url }}" class="btn btn-sm btn-outline-success ms-2" download="{{ image.get_processed_download_filename }}">Скачать (PNG без маски)</a>
+                 {% endif %}
+            </div>
+        </div>
+        {% elif image.processed_image %}
+         <div class="card shadow-sm mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Обработанное изображение (PNG)</h5>
+            </div>
+            <div class="card-body text-center">
+                 <p class="text-danger">Не удалось создать изображение с наложением маски.</p>
+                 <img src="{{ image.processed_image.url }}" class="img-fluid mb-3" alt="Обработанное: {{ image.original_filename }}">
+                 <a href="{{ image.processed_image.url }}" class="btn btn-sm btn-outline-success" download="{{ image.get_processed_download_filename }}">Скачать (PNG без маски)</a>
             </div>
         </div>
         {% endif %}
 
-        {# НОВЫЙ БЛОК: Маска предсказания #}
-        {% if image.prediction_mask %}
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-info text-dark">
-                <h5 class="mb-0">Маска предсказания (Контур)</h5>
-            </div>
-            <div class="card-body text-center">
-                <div class="img-container mb-3" style="background-color: #f8f9fa;"> {# Светлый фон для ч/б маски #}
-                    <img src="{{ image.prediction_mask.url }}" class="img-fluid" alt="Маска предсказания для: {{ image.original_filename }}">
-                </div>
-                 <a href="{{ image.prediction_mask.url }}" class="btn btn-sm btn-outline-info" download="{{ image.get_mask_download_filename }}">Скачать (Маска)</a>
-            </div>
-        </div>
-        {% endif %}
-        
-        {# Блок для оригинального изображения (может быть ниже маски) #}
         {% if image.image %}
         <div class="card shadow-sm mb-4">
-            <div class="card-header {% if not image.processed %}bg-primary text-white{% else %}bg-light{% endif %}">
-                <h5 class="mb-0">Оригинальное изображение</h5>
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Исходное изображение (Превью PNG)</h5>
             </div>
             <div class="card-body text-center">
-                <div class="img-container mb-3" {% if image.processed and image.prediction_mask %}style="max-height: 300px;"{% endif %}> {# Уменьшим, если есть маска #}
-                    {# Попытка отобразить оригинал, если это возможно браузером #}
-                    <img src="{{ image.image.url }}" class="img-fluid" alt="Оригинал: {{ image.original_filename }}" 
-                         onerror="this.onerror=null; this.parentElement.innerHTML='<p class=text-muted>Превью для этого формата недоступно.</p>';">
+                <div class="img-container mb-3">
+                    {% if image.processed_image %}
+                        <img src="{{ image.processed_image.url }}" class="img-fluid" alt="Превью PNG для: {{ image.original_filename }}">
+                    {% else %}
+                         <p class="text-muted p-3">Превью будет доступно после обработки.</p>
+                    {% endif %}
                 </div>
-                <a href="{{ image.image.url }}" class="btn btn-sm btn-outline-primary" download="{{ image.original_filename }}">Скачать (Оригинал)</a>
+                <a href="{{ image.image.url }}" class="btn btn-sm btn-outline-secondary" download="{{ image.original_filename }}">Скачать (Оригинал DCM)</a>
             </div>
         </div>
         {% endif %}
@@ -68,19 +65,16 @@
     </div>
     
     <div class="col-md-5">
-        {# Информация о файле #}
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-secondary text-white">
+            <div class="card-header bg-light text-dark border-secondary">
                 <h5 class="mb-0">Информация</h5>
             </div>
             <div class="card-body">
                 <dl class="row">
                     <dt class="col-sm-5">Имя файла:</dt>
                     <dd class="col-sm-7">{{ image.original_filename }}</dd>
-                    
                     <dt class="col-sm-5">Дата загрузки:</dt>
                     <dd class="col-sm-7">{{ image.uploaded_at|date:"d.m.Y H:i" }}</dd>
-                    
                     <dt class="col-sm-5">Статус:</dt>
                     <dd class="col-sm-7">
                         {% if image.processed %}
@@ -89,26 +83,22 @@
                             <span class="badge bg-warning text-dark">Ожидает обработки</span>
                         {% endif %}
                     </dd>
-
-                    {# Ссылки на скачивание #}
                     {% if image.image %}
                     <dt class="col-sm-5">Оригинал:</dt>
-                    <dd class="col-sm-7"><a href="{{ image.image.url }}" download="{{ image.original_filename }}">Скачать</a></dd>
+                    <dd class="col-sm-7"><a href="{{ image.image.url }}" download="{{ image.original_filename }}">Скачать (DCM)</a></dd>
                     {% endif %}
                     {% if image.processed_image %}
                     <dt class="col-sm-5">Обработано:</dt>
                     <dd class="col-sm-7"><a href="{{ image.processed_image.url }}" download="{{ image.get_processed_download_filename }}">Скачать (PNG)</a></dd>
                     {% endif %}
-                    {# НОВАЯ ССЫЛКА: Скачать маску #}
                     {% if image.prediction_mask %}
-                    <dt class="col-sm-5">Маска:</dt>
-                    <dd class="col-sm-7"><a href="{{ image.prediction_mask.url }}" download="{{ image.get_mask_download_filename }}">Скачать (Маска)</a></dd>
+                    <dt class="col-sm-5">Результат:</dt>
+                    <dd class="col-sm-7"><a href="{{ image.prediction_mask.url }}" download="{{ image.get_mask_download_filename }}">Скачать (с маской)</a></dd>
                     {% endif %}
                 </dl>
             </div>
         </div>
         
-        {# Действия #}
         <div class="card shadow-sm">
             <div class="card-header bg-warning text-dark">
                 <h5 class="mb-0">Действия</h5>
@@ -126,11 +116,9 @@
                         Изображение {% if image.processed %}уже обработано{% else %}не может быть обработано (нет файла){% endif %}
                     </button>
                     {% endif %}
-                    
                     <hr>
-
                     <a href="{% url 'image_delete' image.id %}" class="btn btn-danger w-100">Удалить запись и файлы</a>
-                    <p class="small text-muted text-center mt-1">Удаляет оригинал, PNG и маску.</p>
+                    <p class="small text-muted text-center mt-1">Удаляет оригинал, PNG и результат с маской.</p>
                 </div>
             </div>
         </div>

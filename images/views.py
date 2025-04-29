@@ -64,19 +64,19 @@ def image_delete(request, image_id):
                 os.remove(image.image.path)
             except OSError as e:
                 print(f"Error removing original file {image.image.path}: {e}")
-        # Удаляем обработанный файл
+        # Удаляем обработанный файл (PNG)
         if image.processed_image and hasattr(image.processed_image, 'path') and os.path.isfile(image.processed_image.path):
             try:
                 os.remove(image.processed_image.path)
             except OSError as e:
                 print(f"Error removing processed file {image.processed_image.path}: {e}")
         
-        # Удаляем маску, если она есть
+        # Удаляем файл с наложением маски (ранее был prediction_mask)
         if image.prediction_mask and hasattr(image.prediction_mask, 'path') and os.path.isfile(image.prediction_mask.path):
              try:
                  os.remove(image.prediction_mask.path)
              except OSError as e:
-                 print(f"Error removing prediction mask file {image.prediction_mask.path}: {e}")
+                 print(f"Error removing overlay image file {image.prediction_mask.path}: {e}")
 
         image.delete()
         messages.success(request, 'Запись и связанные файлы успешно удалены!')
@@ -128,20 +128,18 @@ def process_image(request, image_id):
         prediction_mask_array = get_prediction_mask(converted_png_path, model)
 
         if prediction_mask_array is not None:
-            # --- 3. Сохранение маски предсказания --- 
-            mask_filename = f"{base_filename}_mask.png"
-            mask_save_path = os.path.join(settings.MEDIA_ROOT, user_dir, mask_filename) # Полный путь для сохранения маски
-            mask_model_path = os.path.join(user_dir, mask_filename) # Путь для модели Django
+            # --- 3. Сохранение РЕЗУЛЬТАТА С НАЛОЖЕНИЕМ МАСКИ --- 
+            overlay_filename = f"{base_filename}_overlay.png"
+            overlay_save_path = os.path.join(settings.MEDIA_ROOT, user_dir, overlay_filename)
+            overlay_model_path = os.path.join(user_dir, overlay_filename)
             
-            if save_prediction_mask_image(converted_png_path, prediction_mask_array, mask_save_path):
-                image_instance.prediction_mask.name = mask_model_path # Сохраняем путь к маске
-                messages.success(request, f"Маска предсказания успешно создана: {mask_filename}")
+            if save_prediction_mask_image(converted_png_path, prediction_mask_array, overlay_save_path):
+                image_instance.prediction_mask.name = overlay_model_path
+                messages.success(request, f"Результат обработки с наложением маски успешно создан: {overlay_filename}")
             else:
-                messages.error(request, "Ошибка при сохранении маски предсказания в файл.")
-                # Продолжаем, но без маски
+                messages.error(request, "Ошибка при сохранении изображения с наложением маски.")
         else:
              messages.error(request, "Ошибка при генерации маски предсказания моделью.")
-             # Продолжаем, но без маски
 
     except FileNotFoundError as e:
         messages.error(request, f"Ошибка загрузки модели: {e}. Убедитесь, что файл модели находится в папке ml_models/")
@@ -151,7 +149,7 @@ def process_image(request, image_id):
         # Обработка не удалась полностью, но PNG сохранен
 
     # --- 4. Финальное сохранение статуса --- 
-    image_instance.processed = True # Помечаем как обработанное (даже если предсказание не удалось)
+    image_instance.processed = True
     image_instance.save()
 
     return redirect('image_detail', image_id=image_id)
