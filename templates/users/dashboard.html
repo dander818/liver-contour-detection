@@ -28,8 +28,9 @@
         <div class="card shadow-sm h-100">
             <div class="card-body">
                 <h5 class="card-title">Просмотр изображений</h5>
-                <p class="card-text">Просмотр всех ваших загруженных изображений и результатов анализа.</p>
-                <a href="{% url 'image_list' %}" class="btn btn-outline-primary">Просмотреть</a>
+                <p class="card-text">Просмотр оригинальных и обработанных изображений.</p>
+                <a href="{% url 'original_image_list' %}" class="btn btn-outline-primary me-2">Оригиналы</a>
+                <a href="{% url 'processed_image_list' %}" class="btn btn-outline-secondary">Обработанные</a>
             </div>
         </div>
     </div>
