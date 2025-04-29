@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Определение контуров печени{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>{{ title }}</h2>
+            <a href="{% url 'image_upload' %}" class="btn btn-primary">
+                {# <i class="fas fa-upload"></i> #} Загрузить новое {# FontAwesome icon removed if not set up #}
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if images %}
+    <div class="row">
+        {% for image in images %}
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm h-100">
+                    {# --- Updated Image Display Logic --- #}
+                    <div class="card-img-top image-thumbnail d-flex align-items-center justify-content-center bg-light text-muted">
+                        {% if list_type == 'original' %}
+                            {% if image.processed_image %} {# Show PNG preview if available #}
+                                <img src="{{ image.processed_image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="Превью PNG: {{ image.original_filename }}">
+                            {% elif image.image %} {# Fallback to trying original (might fail) #}
+                                <img src="{{ image.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="Оригинал: {{ image.original_filename }}" onerror="this.parentElement.innerHTML='<span class=small>Превью недоступно</span>';">
+                            {% else %} {# No image files at all #}
+                                <span class="small">Нет файла</span>
+                            {% endif %}
+                        {% elif list_type == 'processed' and image.prediction_mask %} {# Show overlay for processed #}
+                             <img src="{{ image.prediction_mask.url }}" class="w-100 h-100" style="object-fit: cover;" alt="Результат: {{ image.original_filename }}">
+                        {% elif list_type == 'processed' and image.processed_image %} {# Fallback to PNG if overlay failed #}
+                            <img src="{{ image.processed_image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="Обработанное PNG: {{ image.original_filename }}">
+                        {% else %} {# Default fallback #}
+                             <span class="small">Нет превью</span>
+                        {% endif %}
+                    </div>
+                    {# --- End Updated Image Display Logic --- #}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ image.original_filename }}</h5>
+                        <p class="card-text small text-muted">
+                            Загружено: {{ image.uploaded_at|date:"d.m.Y H:i" }}
+                        </p>
+                        <p class="card-text">
+                            {% if image.processed %}
+                                <span class="badge bg-success">Обработано</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Ожидает обработки</span>
+                            {% endif %}
+                        </p>
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'image_detail' image.id %}" class="btn btn-sm btn-outline-primary">Просмотреть</a>
+                            {# Updated Download Logic #}
+                            {% if list_type == 'processed' and image.prediction_mask %}
+                                <a href="{{ image.prediction_mask.url }}" class="btn btn-sm btn-outline-success" download="{{ image.get_mask_download_filename }}">Скачать (с маской)</a>
+                            {% elif image.processed_image %} {# Download PNG if available (original or processed list) #}
+                                <a href="{{ image.processed_image.url }}" class="btn btn-sm btn-outline-success" download="{{ image.get_processed_download_filename }}">Скачать (PNG)</a>
+                            {% elif image.image %} {# Fallback to original if no PNG #}
+                                <a href="{{ image.image.url }}" class="btn btn-sm btn-outline-secondary" download="{{ image.original_filename }}">Скачать (Ориг.)</a>
+                            {% endif %}
+                            <a href="{% url 'image_delete' image.id %}" class="btn btn-sm btn-outline-danger">Удалить</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        {% if list_type == 'original' %}
+            <p class="mb-0">У вас пока нет загруженных изображений. <a href="{% url 'image_upload' %}">Загрузите</a> ваше первое изображение.</p>
+        {% elif list_type == 'processed' %}
+            <p class="mb-0">У вас пока нет обработанных изображений.</p>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %} 
