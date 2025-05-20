@@ -7,7 +7,13 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras import backend as K
 import matplotlib.pyplot as plt
 import os
+import torch
+import cv2
+import segmentation_models_pytorch as smp
+from albumentations import Compose, Resize
+from albumentations.pytorch import ToTensorV2
 from django.conf import settings # To get BASE_DIR
+from PIL import Image
 
 # --- Model Loading ---
 
@@ -22,28 +28,38 @@ def dice_coef(y_true, y_pred):
 def dice_coef_loss(y_true, y_pred):
     return 1 - dice_coef(y_true, y_pred)
 
-def load_prediction_model(model_filename="unet_r.keras"):
-    """Loads the Keras segmentation model."""
+def load_prediction_model(model_filename="DeepLabV3Plus_model.pth"):
+    """Loads the PyTorch segmentation model."""
     # Construct the absolute path to the model file
     model_path = os.path.join(settings.BASE_DIR, 'ml_models', model_filename)
     if not os.path.exists(model_path):
         print(f"Error: Model file not found at {model_path}")
         # Optionally raise an exception or handle appropriately
         raise FileNotFoundError(f"Model file not found at {model_path}. Please place it in the 'ml_models' directory.")
-        # return None # Or return None if you prefer handling it later
 
     try:
-        model = load_model(
-            model_path,
-            custom_objects={'dice_coef': dice_coef, 'dice_coef_loss': dice_coef_loss}
-        )
+        # Create DeepLabV3Plus model
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = smp.DeepLabV3Plus(classes=1, in_channels=1)
+        model.load_state_dict(torch.load(model_path, map_location=device))
+        model.to(device)
+        model.eval()
         print(f"Successfully loaded model from {model_path}")
         return model
     except Exception as e:
         print(f"Error loading model from {model_path}: {e}")
         # Optionally re-raise or handle
         raise e # Re-raise the exception to be caught by the caller
-        # return None
+
+def find_contours(mask):
+    """Finds contours in a binary mask using OpenCV."""
+    if isinstance(mask, torch.Tensor):
+        mask = mask.squeeze().cpu().numpy()
+    mask = (mask > 0.5).astype(np.uint8) * 255
+    contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contour_mask = np.zeros_like(mask)
+    cv2.drawContours(contour_mask, contours, -1, 255, thickness=2)  # Увеличил толщину для лучшей видимости
+    return contour_mask
 
 # --- Prediction ---
 
@@ -54,33 +70,58 @@ def get_prediction_mask(png_image_path, model):
         return None
 
     try:
-        img = image.load_img(png_image_path, color_mode='grayscale', target_size=(512, 512))
-        img_array = image.img_to_array(img)
-        img_array = np.expand_dims(img_array, axis=0)
-
-        # Original notebook had transpose: (0, 3, 1, 2) - check if model expects channels_first or channels_last
-        # Keras default is channels_last (batch, height, width, channels) -> (1, 512, 512, 1)
-        # If your model expects channels_first (batch, channels, height, width) -> (1, 1, 512, 512), uncomment transpose
-        img_array = np.transpose(img_array, (0, 3, 1, 2)) # Uncommented: Model expects channels_first
-
-        img_array = img_array / 255.0  # Normalize
-
-        prediction = model.predict(img_array)
-        print(f"Prediction generated for {png_image_path}")
-
-        # Squeeze the prediction to remove batch and channel dims if necessary
-        # Result shape might be (1, 512, 512, 1) -> squeeze to (512, 512)
-        pred_mask = np.squeeze(prediction)
-
-        # Normalize mask to 0-1 range if it's not already
-        if pred_mask.max() > 1.0:
-             pred_mask = pred_mask / pred_mask.max() # More robust normalization
-        pred_mask = np.clip(pred_mask, 0, 1) # Ensure values are strictly within [0, 1]
-
-
-        return pred_mask # Return the raw mask array
+        # Load the original image to get its dimensions
+        orig_img = Image.open(png_image_path)
+        orig_width, orig_height = orig_img.size
+        print(f"Original image dimensions: {orig_width}x{orig_height}")
+        
+        # Convert PIL Image to numpy array
+        img_array = np.array(orig_img)
+        
+        # If image is RGB, convert to grayscale
+        if len(img_array.shape) == 3 and img_array.shape[2] == 3:
+            img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+            
+        print(f"Image array shape before preprocessing: {img_array.shape}")
+        
+        # Define the transformations for the model input (resize to 256x256)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        transform = Compose([
+            Resize(256, 256),  # Модель ожидает 256x256
+            ToTensorV2()
+        ])
+        
+        # Apply transformations
+        transformed = transform(image=img_array)
+        img_tensor = transformed["image"].unsqueeze(0).float()  # Add batch dimension
+        img_tensor = img_tensor.to(device)
+        
+        # Normalize values between 0 and 1
+        if torch.max(img_tensor) > 0:
+            img_tensor = img_tensor / torch.max(img_tensor)
+        
+        print(f"Input tensor shape: {img_tensor.shape}")
+        
+        # Make prediction
+        with torch.no_grad():
+            prediction = torch.sigmoid(model(img_tensor))
+            print(f"Prediction tensor shape: {prediction.shape}")
+            
+            # Get contours of the prediction
+            pred_mask = find_contours(prediction > 0.5)
+            print(f"Contour mask shape: {pred_mask.shape}")
+            
+            # Resize contour mask back to original image dimensions
+            pred_mask_resized = cv2.resize(pred_mask, (orig_width, orig_height), 
+                                          interpolation=cv2.INTER_NEAREST)
+            
+            print(f"Resized contour mask shape: {pred_mask_resized.shape}")
+        
+        return pred_mask_resized
     except Exception as e:
         print(f"Error during prediction for {png_image_path}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 # --- Saving Mask ---
@@ -95,23 +136,32 @@ def save_prediction_mask_image(processed_png_path, prediction_mask, output_path)
         return False
 
     try:
-        # Use Matplotlib to create the overlay image
-        base_img = image.load_img(processed_png_path, color_mode='grayscale') # Ensure base is loaded as grayscale
+        # Load original image
+        orig_img = Image.open(processed_png_path)
+        orig_width, orig_height = orig_img.size
+        print(f"Original image for overlay: {orig_width}x{orig_height}")
         
-        # Ensure mask is in the range [0, 1] for colormap
-        mask_normalized = np.clip(prediction_mask, 0, 1)
-
-        fig, ax = plt.subplots(figsize=(base_img.width / 100, base_img.height / 100), dpi=100)
-        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        # Ensure mask has the right dimensions by explicit resizing if needed
+        mask_height, mask_width = prediction_mask.shape
+        if mask_width != orig_width or mask_height != orig_height:
+            print(f"Resizing mask from {mask_width}x{mask_height} to {orig_width}x{orig_height}")
+            prediction_mask = cv2.resize(prediction_mask, (orig_width, orig_height), 
+                                        interpolation=cv2.INTER_NEAREST)
         
-        ax.imshow(base_img, cmap='gray') # Draw base image explicitly in grayscale
-        # Overlay the mask with Reds colormap and alpha blending
-        # Set vmin/vmax to ensure consistent mapping for boolean-like masks
-        ax.imshow(mask_normalized, cmap='Reds', alpha=0.4, vmin=0, vmax=1)
+        # Convert mask to PyPlot-compatible format (normalized 0-1)
+        mask_normalized = prediction_mask / 255.0  # Normalize contour mask from 0-255 to 0-1
+        
+        # Create figure with exact image dimensions and high DPI for better quality
+        fig, ax = plt.subplots(figsize=(orig_width/100, orig_height/100), dpi=300)
+        fig.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
+        
+        # Display base image and overlay
+        ax.imshow(np.array(orig_img), cmap='gray')
+        ax.imshow(mask_normalized, cmap='Reds', alpha=0.7, vmin=0, vmax=1)  # Красный с прозрачностью для контура
         ax.axis('off')
         
-        # Save the figure directly
-        plt.savefig(output_path, bbox_inches='tight', pad_inches=0, dpi=100)
+        # Save the figure
+        plt.savefig(output_path, bbox_inches='tight', pad_inches=0, dpi=300)
         plt.close(fig) # Close the figure to free memory
 
         print(f"Overlay image saved to {output_path}")

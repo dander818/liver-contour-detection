@@ -2,8 +2,13 @@ FROM python:3.9.6
 
 WORKDIR /app
 
-# Устанавливаем системные зависимости для Pillow
-RUN apt-get update && apt-get install -y libjpeg-dev zlib1g-dev --no-install-recommends && rm -rf /var/lib/apt/lists/*
+# Устанавливаем системные зависимости для Pillow, OpenCV и других библиотек
+RUN apt-get update && apt-get install -y \
+    libjpeg-dev \
+    zlib1g-dev \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 # Устанавливаем зависимости
 COPY requirements.txt .

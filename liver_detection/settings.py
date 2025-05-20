@@ -34,6 +34,9 @@ PYTHONANYWHERE_HOST = os.environ.get('PYTHONANYWHERE_USERNAME', '')
 if PYTHONANYWHERE_HOST:
     ALLOWED_HOSTS.append(f"{PYTHONANYWHERE_HOST}.pythonanywhere.com")
 
+# Увеличение максимального размера загружаемых файлов (100 МБ)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB в байтах
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB в байтах
 
 # Application definition
 

@@ -5,7 +5,7 @@ from django.conf import settings
 from django.http import HttpResponseBadRequest
 from .forms import ImageUploadForm
 from .models import Image
-from .utils import dcm_to_png  # Утилита конвертации
+from .utils import dcm_to_png, nii_to_png  # Утилиты конвертации
 from .prediction import load_prediction_model, get_prediction_mask, save_prediction_mask_image # Утилиты предсказания
 import os
 
@@ -102,20 +102,34 @@ def process_image(request, image_id):
     user_dir = os.path.dirname(image_instance.image.name) # user_<id>/...
     base_filename = os.path.splitext(os.path.basename(image_instance.image.name))[0]
 
-    # --- 1. Конвертация DCM в PNG ---
+    # --- 1. Конвертация входного файла в PNG ---
     png_filename = f"{base_filename}_processed.png"
     png_save_path = os.path.join(settings.MEDIA_ROOT, user_dir, png_filename) # Полный путь для сохранения
     png_model_path = os.path.join(user_dir, png_filename) # Путь для модели Django
 
     os.makedirs(os.path.dirname(png_save_path), exist_ok=True)
 
-    converted_png_path = dcm_to_png(original_path, png_save_path)
+    # Определяем тип файла по расширению
+    file_ext = os.path.splitext(original_path)[1].lower()
+    
+    # Обработка в зависимости от типа файла
+    converted_png_path = None
+    if file_ext == '.dcm':
+        converted_png_path = dcm_to_png(original_path, png_save_path)
+        if converted_png_path:
+            messages.success(request, f"DICOM изображение успешно преобразовано в PNG: {png_filename}")
+    elif file_ext in ['.nii', '.gz']:
+        converted_png_path = nii_to_png(original_path, png_save_path)
+        if converted_png_path:
+            messages.success(request, f"NIfTI изображение успешно преобразовано в PNG: {png_filename}")
+    else:
+        messages.error(request, f"Неподдерживаемый тип файла: {file_ext}. Поддерживаются только .dcm, .nii и .nii.gz файлы.")
+        return redirect('image_detail', image_id=image_id)
 
     if not converted_png_path:
         messages.error(request, "Ошибка при преобразовании исходного изображения в PNG.")
         return redirect('image_detail', image_id=image_id)
 
-    messages.success(request, f"Изображение успешно преобразовано в PNG: {png_filename}")
     image_instance.processed_image.name = png_model_path # Сохраняем путь к PNG
     # Не ставим processed=True и не сохраняем image_instance пока
 
