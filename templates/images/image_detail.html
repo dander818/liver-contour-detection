@@ -16,10 +16,26 @@
 
 <div class="row">
     <div class="col-md-7">
-        {% if image.prediction_mask %}
+        {% if image.edited_contour %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Результат с отредактированным контуром</h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="img-container mb-3">
+                    <img src="{{ image.edited_contour.url }}" class="img-fluid" alt="Отредактированный контур: {{ image.original_filename }}">
+                </div>
+                <a href="{{ image.edited_contour.url }}" class="btn btn-sm btn-outline-success" download="{{ image.get_edited_contour_download_filename }}">Скачать (с контуром)</a>
+                {% if image.processed_image %}
+                <a href="{{ image.processed_image.url }}" class="btn btn-sm btn-outline-primary ms-2" download="{{ image.get_processed_download_filename }}">Скачать (PNG без контура)</a>
+                {% endif %}
+                <a href="{% url 'edit_contour' image.id %}" class="btn btn-sm btn-outline-warning ms-2">Редактировать контур</a>
+            </div>
+        </div>
+        {% elif image.prediction_mask %}
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Результат обработки (Наложение маски)</h5>
+                <h5 class="mb-0">Результат обработки (Автоматический контур)</h5>
             </div>
             <div class="card-body text-center">
                 <div class="img-container mb-3">
@@ -29,9 +45,12 @@
                  {% if image.processed_image %}
                  <a href="{{ image.processed_image.url }}" class="btn btn-sm btn-outline-success ms-2" download="{{ image.get_processed_download_filename }}">Скачать (PNG без маски)</a>
                  {% endif %}
+                 <a href="{% url 'edit_contour' image.id %}" class="btn btn-sm btn-outline-warning ms-2">Редактировать контур</a>
             </div>
         </div>
-        {% elif image.processed_image %}
+        {% endif %}
+        
+        {% if image.processed_image and not image.prediction_mask %}
          <div class="card shadow-sm mb-4">
             <div class="card-header bg-warning text-dark">
                 <h5 class="mb-0">Обработанное изображение (PNG)</h5>
@@ -57,7 +76,7 @@
                          <p class="text-muted p-3">Превью будет доступно после обработки.</p>
                     {% endif %}
                 </div>
-                <a href="{{ image.image.url }}" class="btn btn-sm btn-outline-secondary" download="{{ image.original_filename }}">Скачать (Оригинал DCM)</a>
+                <a href="{{ image.image.url }}" class="btn btn-sm btn-outline-secondary" download="{{ image.original_filename }}">Скачать (Оригинал)</a>
             </div>
         </div>
         {% endif %}
@@ -82,21 +101,28 @@
                         {% else %}
                             <span class="badge bg-warning text-dark">Ожидает обработки</span>
                         {% endif %}
+                        {% if image.edited %}
+                            <span class="badge bg-info text-dark">Ручное редактирование</span>
+                        {% endif %}
                     </dd>
                     {% if image.image %}
                     <dt class="col-sm-5">Оригинал:</dt>
-                    <dd class="col-sm-7"><a href="{{ image.image.url }}" download="{{ image.original_filename }}">Скачать (DCM)</a></dd>
+                    <dd class="col-sm-7"><a href="{{ image.image.url }}" download="{{ image.original_filename }}">Скачать</a></dd>
                     {% endif %}
                     {% if image.processed_image %}
                     <dt class="col-sm-5">Обработано:</dt>
                     <dd class="col-sm-7"><a href="{{ image.processed_image.url }}" download="{{ image.get_processed_download_filename }}">Скачать (PNG)</a></dd>
                     {% endif %}
                     {% if image.prediction_mask %}
-                    <dt class="col-sm-5">Результат:</dt>
-                    <dd class="col-sm-7"><a href="{{ image.prediction_mask.url }}" download="{{ image.get_mask_download_filename }}">Скачать (с маской)</a></dd>
+                    <dt class="col-sm-5">Автоконтур:</dt>
+                    <dd class="col-sm-7"><a href="{{ image.prediction_mask.url }}" download="{{ image.get_mask_download_filename }}">Скачать</a></dd>
+                    {% endif %}
+                    {% if image.edited_contour %}
+                    <dt class="col-sm-5">Ручной контур:</dt>
+                    <dd class="col-sm-7"><a href="{{ image.edited_contour.url }}" download="{{ image.get_edited_contour_download_filename }}">Скачать</a></dd>
                     {% endif %}
                 </dl>
-            </div>
+            
         </div>
         
         <div class="card shadow-sm">
@@ -116,6 +142,12 @@
                         Изображение {% if image.processed %}уже обработано{% else %}не может быть обработано (нет файла){% endif %}
                     </button>
                     {% endif %}
+                    
+                    {% if image.processed and image.prediction_mask %}
+                    <a href="{% url 'edit_contour' image.id %}" class="btn btn-success w-100">Редактировать контур</a>
+                    <p class="small text-muted text-center mb-2">Ручное редактирование контура печени.</p>
+                    {% endif %}
+                    
                     <hr>
                     <a href="{% url 'image_delete' image.id %}" class="btn btn-danger w-100">Удалить запись и файлы</a>
                     <p class="small text-muted text-center mt-1">Удаляет оригинал, PNG и результат с маской.</p>

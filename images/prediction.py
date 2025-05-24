@@ -126,6 +126,50 @@ def get_prediction_mask(png_image_path, model):
 
 # --- Saving Mask ---
 
+def save_contour_mask_for_extraction(processed_png_path, prediction_mask, output_path):
+    """Создает и сохраняет изображение только с контурами (без заливки) для извлечения точек."""
+    if prediction_mask is None:
+        print("Error: Prediction mask is None, cannot save contour mask.")
+        return False
+    if not os.path.exists(processed_png_path):
+        print(f"Error: Processed PNG {processed_png_path} not found for saving contour mask.")
+        return False
+
+    try:
+        # Load original image
+        orig_img = Image.open(processed_png_path)
+        orig_width, orig_height = orig_img.size
+        print(f"Original image for contour mask: {orig_width}x{orig_height}")
+        
+        # Ensure mask has the right dimensions
+        mask_height, mask_width = prediction_mask.shape
+        if mask_width != orig_width or mask_height != orig_height:
+            print(f"Resizing mask from {mask_width}x{mask_height} to {orig_width}x{orig_height}")
+            prediction_mask = cv2.resize(prediction_mask, (orig_width, orig_height), 
+                                        interpolation=cv2.INTER_NEAREST)
+        
+        # Create contour mask (thin lines only)
+        binary_mask = (prediction_mask > 127).astype(np.uint8)
+        contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        # Create image with only contour lines on black background
+        contour_mask = np.zeros((orig_height, orig_width, 3), dtype=np.uint8)
+        if contours:
+            # Draw only the contour lines (no fill)
+            largest_contour = max(contours, key=cv2.contourArea)
+            cv2.polylines(contour_mask, [largest_contour], isClosed=True, color=(255, 0, 0), thickness=2)
+        
+        # Save the contour mask
+        contour_image = Image.fromarray(contour_mask, 'RGB')
+        contour_image.save(output_path, 'PNG')
+        print(f"Contour mask for extraction saved to {output_path}")
+        return True
+    except Exception as e:
+        print(f"Error saving contour mask to {output_path}: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 def save_prediction_mask_image(processed_png_path, prediction_mask, output_path):
     """Generates and saves an image with the prediction mask overlaid onto the processed PNG."""
     if prediction_mask is None:
@@ -148,26 +192,41 @@ def save_prediction_mask_image(processed_png_path, prediction_mask, output_path)
             prediction_mask = cv2.resize(prediction_mask, (orig_width, orig_height), 
                                         interpolation=cv2.INTER_NEAREST)
         
-        # Convert mask to PyPlot-compatible format (normalized 0-1)
-        mask_normalized = prediction_mask / 255.0  # Normalize contour mask from 0-255 to 0-1
+        # Convert original image to numpy array
+        img_array = np.array(orig_img)
         
-        # Create figure with exact image dimensions and high DPI for better quality
-        fig, ax = plt.subplots(figsize=(orig_width/100, orig_height/100), dpi=300)
-        fig.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
+        # Convert to RGB if grayscale
+        if len(img_array.shape) == 2:
+            img_array = cv2.cvtColor(img_array, cv2.COLOR_GRAY2RGB)
+        elif len(img_array.shape) == 3 and img_array.shape[2] == 4:
+            img_array = cv2.cvtColor(img_array, cv2.COLOR_RGBA2RGB)
         
-        # Display base image and overlay
-        ax.imshow(np.array(orig_img), cmap='gray')
-        ax.imshow(mask_normalized, cmap='Reds', alpha=0.7, vmin=0, vmax=1)  # Красный с прозрачностью для контура
-        ax.axis('off')
+        # Create filled contour mask
+        # Find contours from the prediction mask
+        binary_mask = (prediction_mask > 127).astype(np.uint8)
+        contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        # Save the figure
-        plt.savefig(output_path, bbox_inches='tight', pad_inches=0, dpi=300)
-        plt.close(fig) # Close the figure to free memory
-
-        print(f"Overlay image saved to {output_path}")
+        # Create filled mask
+        filled_mask = np.zeros((orig_height, orig_width, 3), dtype=np.uint8)
+        if contours:
+            # Fill the largest contour with red color
+            largest_contour = max(contours, key=cv2.contourArea)
+            cv2.fillPoly(filled_mask, [largest_contour], (255, 0, 0))  # Red fill
+            cv2.polylines(filled_mask, [largest_contour], isClosed=True, color=(255, 0, 0), thickness=3)  # Red border
+        
+        # Convert images to PIL for blending
+        orig_pil = Image.fromarray(img_array.astype(np.uint8), 'RGB')
+        mask_pil = Image.fromarray(filled_mask, 'RGB')
+        
+        # Blend images with transparency (30% mask overlay)
+        result = Image.blend(orig_pil, mask_pil, alpha=0.3)
+        
+        # Save the result
+        result.save(output_path, 'PNG')
+        print(f"Overlay image with filled contour saved to {output_path}")
         return True
     except Exception as e:
         print(f"Error saving overlay image to {output_path}: {e}")
         import traceback
-        traceback.print_exc() # Print detailed traceback
+        traceback.print_exc()
         return False 

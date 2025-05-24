@@ -7,12 +7,17 @@ services:
     volumes:
       - media_volume:/app/media
       - static_volume:/app/staticfiles
+      - ./images/migrations:/app/images/migrations
+      - ./users/migrations:/app/users/migrations
+      - ./db.sqlite3:/app/db.sqlite3
+      - ./templates:/app/templates
     command: >
       bash -c "python manage.py collectstatic --noinput &&
                python manage.py migrate &&
+               chmod -R 777 /app/media &&
                gunicorn liver_detection.wsgi:application --bind 0.0.0.0:8000"
     environment:
-      - DEBUG=${DEBUG:-False}
+      - DEBUG=${DEBUG:-True}
       - SECRET_KEY=${SECRET_KEY:-django-insecure-yqe9%yi9wfbc4!3167m)7iut)ig8^$pxuz5xc%@1bj9^h_%_ay}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
 
@@ -30,4 +35,6 @@ services:
 
 volumes:
   media_volume:
-  static_volume: 
+    driver: local
+  static_volume:
+    driver: local 

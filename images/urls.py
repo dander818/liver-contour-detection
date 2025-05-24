@@ -8,4 +8,6 @@ urlpatterns = [
     path('images/<int:image_id>/', views.image_detail, name='image_detail'),
     path('images/<int:image_id>/delete/', views.image_delete, name='image_delete'),
     path('images/<int:image_id>/process/', views.process_image, name='process_image'),
+    path('images/<int:image_id>/edit_contour/', views.edit_contour, name='edit_contour'),
+    path('images/<int:image_id>/save_edited_contour/', views.save_edited_contour, name='save_edited_contour'),
 ] 

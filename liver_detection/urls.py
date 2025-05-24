@@ -27,7 +27,11 @@ urlpatterns = [
     path('', include('images.urls')),
 ]
 
-# Добавляем URL-пути для медиа-файлов в режиме отладки
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+# Добавляем URL-пути для медиа-файлов всегда (не только в режиме отладки)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Это оставляем для обратной совместимости, но теперь url доступны всегда
+# if settings.DEBUG:
+#     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+#     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

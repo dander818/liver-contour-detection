@@ -1,0 +1,894 @@
+{% extends 'base.html' %}
+
+{% block title %}Редактирование контура: {{ image.original_filename }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .canvas-container {
+        position: relative;
+        display: inline-block;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        overflow: auto;
+        margin: 20px 0;
+        max-height: 70vh;
+        max-width: 100%;
+        background: #f8f9fa;
+    }
+    
+    #canvas {
+        cursor: crosshair;
+        display: block;
+        margin: 0 auto;
+    }
+    
+    .controls {
+        margin: 20px 0;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .btn-group {
+        margin: 10px 5px;
+    }
+    
+    .zoom-controls {
+        text-align: center;
+        margin: 10px 0;
+    }
+    
+    .zoom-info {
+        margin: 5px 0;
+        font-weight: bold;
+        color: #495057;
+    }
+    
+    .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+    }
+    
+    .status.success {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+    
+    .status.error {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+    
+    .status.info {
+        background: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+    }
+    
+    .control-section {
+        margin: 15px 0;
+        padding: 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        background: white;
+    }
+    
+    .control-section h6 {
+        margin-bottom: 15px;
+        color: #495057;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 5px;
+    }
+    
+    .contour-info {
+        background: #e9ecef;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+    }
+    
+    .current-contour {
+        font-weight: bold;
+        color: #007bff;
+    }
+    
+    .contour-list {
+        max-height: 150px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 5px;
+    }
+    
+    .contour-item {
+        padding: 5px 10px;
+        margin: 2px 0;
+        border-radius: 4px;
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+    
+    .contour-item:hover {
+        background: #f8f9fa;
+        border-color: #dee2e6;
+    }
+    
+    .contour-item.active {
+        background: #007bff;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>Редактирование контура: {{ image.original_filename }}</h2>
+                <a href="{% url 'image_detail' image.id %}" class="btn btn-secondary">Вернуться к изображению</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Управление масштабированием -->
+    <div class="row">
+        <div class="col-12">
+            <div class="control-section">
+                <h6>Управление масштабированием</h6>
+                <div class="zoom-controls">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-secondary" id="zoomOutBtn">🔍-</button>
+                        <button type="button" class="btn btn-outline-secondary" id="resetZoomBtn">100%</button>
+                        <button type="button" class="btn btn-outline-secondary" id="zoomInBtn">🔍+</button>
+                        <button type="button" class="btn btn-outline-secondary" id="fitBtn">По размеру</button>
+                    </div>
+                    <div class="zoom-info">
+                        Масштаб: <span id="zoomLevel">100%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="row">
+        <div class="col-12 text-center">
+            <div class="canvas-container" id="canvasContainer">
+                <canvas id="canvas"></canvas>
+            </div>
+            <!-- Отладочная информация для размеров -->
+            <div class="mt-2" style="font-size: 12px; color: #666;">
+                Размеры canvas: <span id="canvasSize">-</span> | 
+                Размеры изображения: <span id="imageSize">-</span> |
+                Масштаб: <span id="currentScale">-</span>
+            </div>
+            <!-- Подсказки по редактированию -->
+            <div class="mt-2" style="font-size: 13px; color: #495057; background: #f8f9fa; padding: 10px; border-radius: 4px;">
+                <strong>Управление:</strong> 
+                Клик на пустом месте - добавить точку | 
+                Клик на линии - вставить точку | 
+                Перетаскивание точки - переместить | 
+                Клик на точке - переключить контур
+            </div>
+        </div>
+    </div>
+
+    <!-- Управление контурами -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="control-section">
+                <h6>Управление контурами</h6>
+                <div class="contour-info">
+                    <div class="current-contour">
+                        Текущий контур: <span id="currentContourName">Контур 1</span>
+                    </div>
+                    <div>
+                        Точек в контуре: <span id="currentContourPoints">0</span>
+                    </div>
+                    <div>
+                        Всего контуров: <span id="totalContours">1</span>
+                    </div>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-primary" id="newContourBtn">Новый контур</button>
+                    <button type="button" class="btn btn-success" id="loadExistingBtn">Загрузить существующий</button>
+                    <button type="button" class="btn btn-warning" id="clearCurrentBtn">Очистить текущий</button>
+                    <button type="button" class="btn btn-danger" id="deleteContourBtn">Удалить контур</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="control-section">
+                <h6>Список контуров</h6>
+                <div class="contour-list" id="contourList">
+                    <!-- Контуры будут добавляться динамически -->
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="control-section">
+                <h6>Действия</h6>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-info" id="undoBtn">Отменить точку</button>
+                    <button type="button" class="btn btn-secondary" id="previewBtn">Предпросмотр</button>
+                    <button type="button" class="btn btn-primary" id="saveBtn">Сохранить все контуры</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Информация о контуре -->
+    <div class="row">
+        <div class="col-12">
+            <div id="status" class="status info">
+                Загрузка изображения...
+            </div>
+            
+            <div id="contourInfo" class="status info" style="display: none;">
+                <span id="hasExistingContour">Проверка...</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const canvasContainer = document.getElementById('canvasContainer');
+    
+    // Кнопки управления
+    const newContourBtn = document.getElementById('newContourBtn');
+    const clearCurrentBtn = document.getElementById('clearCurrentBtn');
+    const deleteContourBtn = document.getElementById('deleteContourBtn');
+    const undoBtn = document.getElementById('undoBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const loadExistingBtn = document.getElementById('loadExistingBtn');
+    const previewBtn = document.getElementById('previewBtn');
+    
+    // Кнопки масштабирования
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const resetZoomBtn = document.getElementById('resetZoomBtn');
+    const fitBtn = document.getElementById('fitBtn');
+    
+    // Информационные элементы
+    const status = document.getElementById('status');
+    const contourInfo = document.getElementById('contourInfo');
+    const currentContourName = document.getElementById('currentContourName');
+    const currentContourPoints = document.getElementById('currentContourPoints');
+    const totalContours = document.getElementById('totalContours');
+    const zoomLevel = document.getElementById('zoomLevel');
+    const hasExistingContour = document.getElementById('hasExistingContour');
+    const contourList = document.getElementById('contourList');
+    
+    // Отладочные элементы
+    const canvasSize = document.getElementById('canvasSize');
+    const imageSize = document.getElementById('imageSize');
+    const currentScale = document.getElementById('currentScale');
+    
+    // Данные контуров
+    let contours = []; // Массив контуров, каждый контур - массив точек
+    let currentContourIndex = 0;
+    let isImageLoaded = false;
+    let imageObj = new Image();
+    let currentZoom = 1.0;
+    let originalWidth = 0;
+    let originalHeight = 0;
+    
+    // Переменные для перетаскивания точек
+    let isDragging = false;
+    let dragContourIndex = -1;
+    let dragPointIndex = -1;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    
+    // Инициализация первого контура
+    contours.push([]);
+    
+    function updateDebugInfo() {
+        canvasSize.textContent = `${canvas.width}x${canvas.height}`;
+        imageSize.textContent = `${originalWidth}x${originalHeight}`;
+        currentScale.textContent = `${currentZoom.toFixed(2)}`;
+    }
+    
+    // Функции для работы с точками
+    function getMousePos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: (e.clientX - rect.left) / currentZoom,
+            y: (e.clientY - rect.top) / currentZoom
+        };
+    }
+    
+    function distance(p1, p2) {
+        return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+    }
+    
+    function findPointAt(mousePos, threshold = 8) {
+        // Ищем точку рядом с координатами мыши
+        for (let contourIndex = 0; contourIndex < contours.length; contourIndex++) {
+            const contour = contours[contourIndex];
+            for (let pointIndex = 0; pointIndex < contour.length; pointIndex++) {
+                const point = contour[pointIndex];
+                if (distance(mousePos, point) <= threshold) {
+                    return { contourIndex, pointIndex };
+                }
+            }
+        }
+        return null;
+    }
+    
+    function findLineSegmentAt(mousePos, threshold = 5) {
+        // Ищем линию рядом с координатами мыши для вставки новой точки
+        for (let contourIndex = 0; contourIndex < contours.length; contourIndex++) {
+            const contour = contours[contourIndex];
+            if (contour.length < 2) continue;
+            
+            for (let i = 0; i < contour.length; i++) {
+                const p1 = contour[i];
+                const p2 = contour[(i + 1) % contour.length]; // Замыкаем контур
+                
+                // Вычисляем расстояние от точки до линии
+                const distToLine = distanceToLineSegment(mousePos, p1, p2);
+                if (distToLine <= threshold) {
+                    return { contourIndex, insertAfter: i };
+                }
+            }
+        }
+        return null;
+    }
+    
+    function distanceToLineSegment(point, lineStart, lineEnd) {
+        const A = point.x - lineStart.x;
+        const B = point.y - lineStart.y;
+        const C = lineEnd.x - lineStart.x;
+        const D = lineEnd.y - lineStart.y;
+        
+        const dot = A * C + B * D;
+        const lenSq = C * C + D * D;
+        let param = -1;
+        
+        if (lenSq !== 0) {
+            param = dot / lenSq;
+        }
+        
+        let xx, yy;
+        
+        if (param < 0) {
+            xx = lineStart.x;
+            yy = lineStart.y;
+        } else if (param > 1) {
+            xx = lineEnd.x;
+            yy = lineEnd.y;
+        } else {
+            xx = lineStart.x + param * C;
+            yy = lineStart.y + param * D;
+        }
+        
+        const dx = point.x - xx;
+        const dy = point.y - yy;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    // Загружаем изображение
+    imageObj.crossOrigin = 'anonymous';
+    const imageUrl = '{{ image.processed_image.url }}';
+    console.log('Попытка загрузки изображения с URL:', imageUrl);
+    imageObj.src = imageUrl;
+    
+    imageObj.onload = function() {
+        console.log('Изображение успешно загружено!');
+        console.log('Размеры изображения:', imageObj.width, 'x', imageObj.height);
+        
+        originalWidth = imageObj.width;
+        originalHeight = imageObj.height;
+        
+        // Устанавливаем начальный размер
+        updateCanvasSize();
+        drawImage();
+        
+        isImageLoaded = true;
+        status.textContent = 'Изображение загружено. Начните кликать для создания контура.';
+        status.className = 'status success';
+        contourInfo.style.display = 'block';
+        
+        // Обновляем информацию
+        updateContourInfo();
+        updateContourList();
+        updateDebugInfo();
+        
+        // Проверяем существующий контур
+        checkExistingContour();
+    };
+    
+    imageObj.onerror = function(error) {
+        console.error('Ошибка загрузки изображения:', error);
+        console.error('URL изображения:', imageUrl);
+        status.textContent = 'Ошибка загрузки изображения: ' + imageUrl;
+        status.className = 'status error';
+    };
+    
+    function updateCanvasSize() {
+        canvas.width = originalWidth * currentZoom;
+        canvas.height = originalHeight * currentZoom;
+        zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+        updateDebugInfo();
+    }
+    
+    function drawImage() {
+        if (!isImageLoaded) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+    }
+    
+    function drawContours() {
+        drawImage();
+        
+        // Рисуем все контуры
+        contours.forEach(function(contour, contourIndex) {
+            if (contour.length === 0) return;
+            
+            // Цвет зависит от того, активный ли контур
+            const isActive = contourIndex === currentContourIndex;
+            const pointColor = isActive ? 'red' : 'orange';
+            const lineColor = isActive ? 'red' : 'orange';
+            const alpha = isActive ? 1.0 : 0.7;
+            
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = pointColor;
+            ctx.strokeStyle = lineColor;
+            ctx.lineWidth = 2 * currentZoom;
+            
+            // Рисуем точки
+            contour.forEach(function(point, index) {
+                // Проверяем координаты на валидность
+                if (point.x < 0 || point.x > originalWidth || point.y < 0 || point.y > originalHeight) {
+                    console.warn(`Точка ${index} в контуре ${contourIndex} вне границ изображения: (${point.x}, ${point.y}) при размере ${originalWidth}x${originalHeight}`);
+                    return;
+                }
+                
+                // Рисуем точку
+                ctx.beginPath();
+                ctx.arc(point.x * currentZoom, point.y * currentZoom, 4 * currentZoom, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Подписываем номер точки
+                ctx.fillStyle = 'white';
+                ctx.font = (12 * currentZoom) + 'px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(index + 1, point.x * currentZoom, point.y * currentZoom + 4 * currentZoom);
+                ctx.fillStyle = pointColor;
+            });
+            
+            // Рисуем линии между точками
+            if (contour.length > 1) {
+                ctx.beginPath();
+                const validPoints = contour.filter(p => p.x >= 0 && p.x <= originalWidth && p.y >= 0 && p.y <= originalHeight);
+                if (validPoints.length > 1) {
+                    ctx.moveTo(validPoints[0].x * currentZoom, validPoints[0].y * currentZoom);
+                    
+                    for (let i = 1; i < validPoints.length; i++) {
+                        ctx.lineTo(validPoints[i].x * currentZoom, validPoints[i].y * currentZoom);
+                    }
+                    
+                    // Замыкаем контур, если точек больше 2
+                    if (validPoints.length > 2) {
+                        ctx.lineTo(validPoints[0].x * currentZoom, validPoints[0].y * currentZoom);
+                    }
+                    
+                    ctx.stroke();
+                }
+            }
+        });
+        
+        ctx.globalAlpha = 1.0;
+    }
+    
+    function updateContourInfo() {
+        const currentContour = contours[currentContourIndex] || [];
+        currentContourName.textContent = `Контур ${currentContourIndex + 1}`;
+        currentContourPoints.textContent = currentContour.length;
+        totalContours.textContent = contours.length;
+    }
+    
+    function updateContourList() {
+        contourList.innerHTML = '';
+        contours.forEach(function(contour, index) {
+            const item = document.createElement('div');
+            item.className = `contour-item ${index === currentContourIndex ? 'active' : ''}`;
+            item.textContent = `Контур ${index + 1} (${contour.length} точек)`;
+            item.addEventListener('click', function() {
+                currentContourIndex = index;
+                updateContourInfo();
+                updateContourList();
+                drawContours();
+            });
+            contourList.appendChild(item);
+        });
+    }
+    
+    // Обработчики событий мыши
+    canvas.addEventListener('mousedown', function(e) {
+        if (!isImageLoaded) return;
+        
+        const mousePos = getMousePos(e);
+        const foundPoint = findPointAt(mousePos);
+        
+        if (foundPoint) {
+            // Начинаем перетаскивание существующей точки
+            isDragging = true;
+            dragContourIndex = foundPoint.contourIndex;
+            dragPointIndex = foundPoint.pointIndex;
+            currentContourIndex = foundPoint.contourIndex; // Делаем контур активным
+            lastMouseX = mousePos.x;
+            lastMouseY = mousePos.y;
+            canvas.style.cursor = 'grabbing';
+            
+            updateContourInfo();
+            updateContourList();
+            e.preventDefault();
+        }
+    });
+    
+    canvas.addEventListener('mousemove', function(e) {
+        if (!isImageLoaded) return;
+        
+        const mousePos = getMousePos(e);
+        
+        if (isDragging && dragContourIndex >= 0 && dragPointIndex >= 0) {
+            // Перетаскиваем точку
+            const contour = contours[dragContourIndex];
+            if (contour && contour[dragPointIndex]) {
+                contour[dragPointIndex].x = Math.round(mousePos.x);
+                contour[dragPointIndex].y = Math.round(mousePos.y);
+                updateContourInfo();
+                updateContourList();
+                drawContours();
+            }
+        } else {
+            // Проверяем, наводимся ли на точку или линию
+            const foundPoint = findPointAt(mousePos);
+            const foundLine = findLineSegmentAt(mousePos);
+            
+            if (foundPoint) {
+                canvas.style.cursor = 'grab';
+            } else if (foundLine) {
+                canvas.style.cursor = 'copy';
+            } else {
+                canvas.style.cursor = 'crosshair';
+            }
+        }
+    });
+    
+    canvas.addEventListener('mouseup', function(e) {
+        if (isDragging) {
+            isDragging = false;
+            dragContourIndex = -1;
+            dragPointIndex = -1;
+            canvas.style.cursor = 'crosshair';
+        }
+    });
+    
+    // Обработчик клика по canvas
+    canvas.addEventListener('click', function(e) {
+        if (!isImageLoaded || isDragging) return;
+        
+        const mousePos = getMousePos(e);
+        const foundPoint = findPointAt(mousePos);
+        const foundLine = findLineSegmentAt(mousePos);
+        
+        if (foundPoint) {
+            // Клик по существующей точке - переключаем контур
+            currentContourIndex = foundPoint.contourIndex;
+            updateContourInfo();
+            updateContourList();
+            drawContours();
+        } else if (foundLine) {
+            // Клик по линии - вставляем новую точку
+            const contour = contours[foundLine.contourIndex];
+            const newPoint = {x: Math.round(mousePos.x), y: Math.round(mousePos.y)};
+            contour.splice(foundLine.insertAfter + 1, 0, newPoint);
+            
+            currentContourIndex = foundLine.contourIndex;
+            updateContourInfo();
+            updateContourList();
+            drawContours();
+            
+            status.textContent = `Добавлена точка в контур ${foundLine.contourIndex + 1}`;
+            status.className = 'status success';
+        } else {
+            // Клик в пустом месте - добавляем точку к текущему контуру
+            contours[currentContourIndex].push({x: Math.round(mousePos.x), y: Math.round(mousePos.y)});
+            updateContourInfo();
+            updateContourList();
+            drawContours();
+        }
+        
+        console.log('Действие:', foundPoint ? 'Переключение контура' : foundLine ? 'Вставка точки' : 'Добавление точки');
+    });
+    
+    function checkExistingContour() {
+        const existingContoursStr = '{{ contours|escapejs }}';
+        const autoPointsStr = '{{ auto_contour_points|escapejs }}';
+        let existingContours = [];
+        let autoPoints = [];
+        
+        try {
+            if (existingContoursStr && existingContoursStr !== '[]') {
+                existingContours = JSON.parse(existingContoursStr);
+            }
+        } catch (e) {
+            console.error('Ошибка парсинга существующих контуров:', e);
+            existingContours = [];
+        }
+        
+        try {
+            if (autoPointsStr && autoPointsStr !== '[]') {
+                autoPoints = JSON.parse(autoPointsStr);
+                
+                // Отладочная информация о координатах автоматического контура
+                if (autoPoints.length > 0) {
+                    const xCoords = autoPoints.map(p => p.x);
+                    const yCoords = autoPoints.map(p => p.y);
+                    console.log('Автоматический контур:');
+                    console.log(`X координаты: мин=${Math.min(...xCoords)}, макс=${Math.max(...xCoords)}`);
+                    console.log(`Y координаты: мин=${Math.min(...yCoords)}, макс=${Math.max(...yCoords)}`);
+                    console.log(`Размеры изображения: ${originalWidth}x${originalHeight}`);
+                }
+            }
+        } catch (e) {
+            console.error('Ошибка парсинга автоматических точек:', e);
+            autoPoints = [];
+        }
+        
+        // Обновляем информацию о контурах
+        if (existingContours && existingContours.length > 0) {
+            let totalPoints = existingContours.reduce((sum, contour) => sum + contour.length, 0);
+            hasExistingContour.innerHTML = `Ручные контуры: <span style="color: #28a745;">Найдено ${existingContours.length} контуров (${totalPoints} точек)</span>`;
+            loadExistingBtn.textContent = 'Загрузить ручные контуры';
+            loadExistingBtn.disabled = false;
+        } else if (autoPoints && autoPoints.length > 0) {
+            hasExistingContour.innerHTML = `Автоматический контур: <span style="color: #ffc107;">Найден (${autoPoints.length} точек)</span>`;
+            loadExistingBtn.textContent = 'Загрузить автоматический контур';
+            loadExistingBtn.disabled = false;
+        } else {
+            hasExistingContour.innerHTML = '<span style="color: #dc3545;">Контуры не найдены</span>';
+            loadExistingBtn.disabled = true;
+        }
+        
+        // Сохраняем контуры для загрузки
+        window.availableContours = {
+            manual: existingContours,
+            auto: autoPoints
+        };
+    }
+    
+    // Создание нового контура
+    newContourBtn.addEventListener('click', function() {
+        contours.push([]);
+        currentContourIndex = contours.length - 1;
+        updateContourInfo();
+        updateContourList();
+        drawContours();
+        status.textContent = `Создан новый контур ${currentContourIndex + 1}.`;
+        status.className = 'status success';
+    });
+    
+    // Удаление текущего контура
+    deleteContourBtn.addEventListener('click', function() {
+        if (contours.length <= 1) {
+            status.textContent = 'Нельзя удалить последний контур.';
+            status.className = 'status error';
+            return;
+        }
+        
+        contours.splice(currentContourIndex, 1);
+        if (currentContourIndex >= contours.length) {
+            currentContourIndex = contours.length - 1;
+        }
+        updateContourInfo();
+        updateContourList();
+        drawContours();
+        status.textContent = 'Контур удален.';
+        status.className = 'status info';
+    });
+    
+    // Масштабирование
+    zoomInBtn.addEventListener('click', function() {
+        currentZoom = Math.min(currentZoom * 1.5, 5.0);
+        updateCanvasSize();
+        drawContours();
+    });
+    
+    zoomOutBtn.addEventListener('click', function() {
+        currentZoom = Math.max(currentZoom / 1.5, 0.1);
+        updateCanvasSize();
+        drawContours();
+    });
+    
+    resetZoomBtn.addEventListener('click', function() {
+        currentZoom = 1.0;
+        updateCanvasSize();
+        drawContours();
+    });
+    
+    fitBtn.addEventListener('click', function() {
+        const containerWidth = canvasContainer.clientWidth - 40;
+        const containerHeight = canvasContainer.clientHeight - 40;
+        const scaleX = containerWidth / originalWidth;
+        const scaleY = containerHeight / originalHeight;
+        currentZoom = Math.min(scaleX, scaleY, 1.0);
+        updateCanvasSize();
+        drawContours();
+    });
+    
+    // Загрузка существующего контура
+    loadExistingBtn.addEventListener('click', function() {
+        let contoursToLoad = [];
+        let contourType = '';
+        
+        // Определяем какие контуры загружать
+        if (window.availableContours.manual && window.availableContours.manual.length > 0) {
+            contoursToLoad = window.availableContours.manual.slice();
+            contourType = 'ручные контуры';
+        } else if (window.availableContours.auto && window.availableContours.auto.length > 0) {
+            // Автоматический контур загружаем как первый контур
+            contoursToLoad = [window.availableContours.auto.slice()];
+            contourType = 'автоматический контур';
+        }
+        
+        if (contoursToLoad.length > 0) {
+            // Заменяем все контуры загруженными
+            contours = contoursToLoad.map(contour => contour.slice());
+            currentContourIndex = 0;
+            updateContourInfo();
+            updateContourList();
+            drawContours();
+            
+            let totalPoints = contours.reduce((sum, contour) => sum + contour.length, 0);
+            status.textContent = `Загружены ${contourType}: ${contours.length} контуров с ${totalPoints} точками.`;
+            status.className = 'status success';
+        } else {
+            status.textContent = 'Нет доступных контуров для загрузки.';
+            status.className = 'status error';
+        }
+    });
+    
+    // Очистка текущего контура
+    clearCurrentBtn.addEventListener('click', function() {
+        contours[currentContourIndex] = [];
+        updateContourInfo();
+        updateContourList();
+        drawContours();
+        status.textContent = 'Текущий контур очищен.';
+        status.className = 'status info';
+    });
+    
+    // Отмена последней точки
+    undoBtn.addEventListener('click', function() {
+        const currentContour = contours[currentContourIndex];
+        if (currentContour.length > 0) {
+            currentContour.pop();
+            updateContourInfo();
+            updateContourList();
+            drawContours();
+            status.textContent = 'Последняя точка удалена.';
+            status.className = 'status info';
+        }
+    });
+    
+    // Предварительный просмотр
+    previewBtn.addEventListener('click', function() {
+        let totalPoints = 0;
+        contours.forEach(contour => totalPoints += contour.length);
+        
+        if (totalPoints === 0) {
+            status.textContent = 'Нет контуров для предварительного просмотра.';
+            status.className = 'status error';
+            return;
+        }
+        
+        // Открываем превью в новом окне
+        const previewCanvas = document.createElement('canvas');
+        const previewCtx = previewCanvas.getContext('2d');
+        previewCanvas.width = originalWidth;
+        previewCanvas.height = originalHeight;
+        
+        // Рисуем изображение
+        previewCtx.drawImage(imageObj, 0, 0);
+        
+        // Рисуем все контуры
+        contours.forEach(function(contour, contourIndex) {
+            if (contour.length < 3) return;
+            
+            // Разные цвета для разных контуров
+            const hue = (contourIndex * 60) % 360;
+            previewCtx.fillStyle = `hsla(${hue}, 70%, 50%, 0.3)`;
+            previewCtx.strokeStyle = `hsl(${hue}, 70%, 40%)`;
+            previewCtx.lineWidth = 2;
+            
+            previewCtx.beginPath();
+            previewCtx.moveTo(contour[0].x, contour[0].y);
+            for (let i = 1; i < contour.length; i++) {
+                previewCtx.lineTo(contour[i].x, contour[i].y);
+            }
+            previewCtx.closePath();
+            previewCtx.fill();
+            previewCtx.stroke();
+        });
+        
+        const newWindow = window.open('', '_blank');
+        newWindow.document.write('<html><head><title>Предварительный просмотр контуров</title></head><body style="margin:0;padding:20px;text-align:center;"><h3>Предварительный просмотр контуров</h3></body></html>');
+        newWindow.document.body.appendChild(previewCanvas);
+    });
+    
+    // Сохранение всех контуров
+    saveBtn.addEventListener('click', function() {
+        // Собираем все точки из всех контуров
+        let allPoints = [];
+        contours.forEach(function(contour, contourIndex) {
+            contour.forEach(function(point) {
+                allPoints.push({
+                    x: point.x,
+                    y: point.y,
+                    contour_id: contourIndex  // Добавляем ID контура
+                });
+            });
+        });
+        
+        if (allPoints.length === 0) {
+            status.textContent = 'Нет контуров для сохранения.';
+            status.className = 'status error';
+            return;
+        }
+        
+        status.textContent = 'Сохранение контуров...';
+        status.className = 'status info';
+        saveBtn.disabled = true;
+        
+        // Отправляем данные на сервер
+        fetch('{% url "save_edited_contour" image.id %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                points: allPoints,
+                contours: contours  // Отправляем также структуру контуров
+            })
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success) {
+                status.textContent = `Успешно сохранено ${contours.length} контуров с ${allPoints.length} точками!`;
+                status.className = 'status success';
+                setTimeout(function() {
+                    window.location.href = '{% url "image_detail" image.id %}';
+                }, 2000);
+            } else {
+                status.textContent = 'Ошибка сохранения: ' + (data.error || 'Неизвестная ошибка');
+                status.className = 'status error';
+                saveBtn.disabled = false;
+            }
+        })
+        .catch(function(error) {
+            console.error('Ошибка:', error);
+            status.textContent = 'Ошибка сети при сохранении контуров.';
+            status.className = 'status error';
+            saveBtn.disabled = false;
+        });
+    });
+});
+</script>
+{% csrf_token %}
+{% endblock %} 
